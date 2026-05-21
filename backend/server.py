@@ -23,7 +23,7 @@ def end_session():
     try:
         # Step 1: Get real peaks from global
         real_peaks = globals.round_peaks.copy()
-        duration = globals.round_count * 10
+        duration = globals.session_duration if globals.session_duration > 0 else globals.round_count * 10
 
         # Step 2: Create noisy (fake) version with jitter
         noisy_peaks = []
