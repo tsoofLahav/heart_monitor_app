@@ -14,13 +14,21 @@ class SessionDataManager {
     _audioStartTimes.add(valid ? now : -1);
   }
 
-  void saveSessionData(Map<String, dynamic> backendData) {
+  String saveSessionData(
+    Map<String, dynamic> backendData, {
+    DateTime? startedAtUtc,
+  }) {
     final id = const Uuid().v4();
-    _sessionData[id] = {
-      "backend": backendData,
-      "audioStartTimes": List.of(_audioStartTimes),
+    final entry = <String, dynamic>{
+      'backend': backendData,
+      'audioStartTimes': List.of(_audioStartTimes),
     };
+    if (startedAtUtc != null) {
+      entry['startedAtUtc'] = startedAtUtc.toIso8601String();
+    }
+    _sessionData[id] = entry;
     _audioStartTimes.clear();
+    return id;
   }
 
   void reset() {

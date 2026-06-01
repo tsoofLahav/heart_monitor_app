@@ -40,6 +40,25 @@ class SelectionScreen extends StatelessWidget {
               child: Text("Start", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
+          SizedBox(height: 20),
+          SizedBox(
+            width: MediaQuery.of(context).size.width * 0.5,
+            height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurpleAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PiloteRecordingScreen()),
+                );
+              },
+              child: Text("Pilote", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          ),
           Spacer(),
           Padding(
             padding: const EdgeInsets.only(bottom: 30.0),

@@ -1,27 +1,53 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
+
 import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import 'guessing_screen.dart';
+import 'pilote_export_screen.dart';
+import 'session_data_manager.dart';
 
-const int TOTAL_DURATION = 20; // Total duration in seconds
+const String _apiBase =
+    'https://monitor-app-ajbjg3d3dgayghc9.israelcentral-01.azurewebsites.net';
+const int maxSessionSeconds = 25;
 
-class BiofeedbackScreen extends StatefulWidget {
+enum RecordingFlow { regular, pilote }
+
+class HeartbeatRecordingScreen extends StatefulWidget {
+  final RecordingFlow flow;
+
+  const HeartbeatRecordingScreen({super.key, required this.flow});
+
   @override
-  _BiofeedbackScreenState createState() => _BiofeedbackScreenState();
+  State<HeartbeatRecordingScreen> createState() => _HeartbeatRecordingScreenState();
 }
 
-class _BiofeedbackScreenState extends State<BiofeedbackScreen> {
+/// Regular practice flow (guessing screen after session).
+class BiofeedbackScreen extends HeartbeatRecordingScreen {
+  BiofeedbackScreen({super.key}) : super(flow: RecordingFlow.regular);
+}
+
+/// Pilote capture flow (save/share export after session).
+class PiloteRecordingScreen extends HeartbeatRecordingScreen {
+  const PiloteRecordingScreen({super.key}) : super(flow: RecordingFlow.pilote);
+}
+
+class _HeartbeatRecordingScreenState extends State<HeartbeatRecordingScreen> {
   CameraController? _cameraController;
   bool _isRecording = false;
-  String _statusMessage = "Cover lens gently with finger and press Start";
+  bool _isProcessing = false;
+  String _statusMessage = 'Cover lens gently with finger and press Start';
 
-  late Timer _animationTimer;
-  late Timer _progressTimer;
+  Timer? _animationTimer;
+  Timer? _progressTimer;
+  Completer<void>? _endRecordingCompleter;
+
   int _heartFrame = 0;
   double _progress = 0.0;
   int _elapsedMillis = 0;
+  DateTime? _sessionStartedAtUtc;
 
   @override
   void initState() {
@@ -32,155 +58,223 @@ class _BiofeedbackScreenState extends State<BiofeedbackScreen> {
   Future<void> _initCamera() async {
     final cameras = await availableCameras();
     final backCamera = cameras.firstWhere((c) => c.lensDirection == CameraLensDirection.back);
-    _cameraController = CameraController(backCamera, ResolutionPreset.medium, enableAudio: false);
+    _cameraController = CameraController(
+      backCamera,
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
     await _cameraController!.initialize();
-    setState(() {});
+    if (mounted) setState(() {});
+  }
+
+  void _signalEndRecording() {
+    final c = _endRecordingCompleter;
+    if (c != null && !c.isCompleted) {
+      c.complete();
+    }
   }
 
   Future<void> _startRecordingSession() async {
-    _statusMessage = "";
+    if (_cameraController?.value.isInitialized != true) return;
+
+    _sessionStartedAtUtc = DateTime.now().toUtc();
+    _statusMessage = '';
     _isRecording = true;
+    _isProcessing = false;
     _progress = 0.0;
     _elapsedMillis = 0;
     setState(() {});
 
-    final roundCount = TOTAL_DURATION ~/ 10;
-
-    _startAnimationTimer();
+    _animationTimer?.cancel();
+    _progressTimer?.cancel();
+    _animationTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+      if (!mounted) return;
+      setState(() {
+        _heartFrame = (_heartFrame + 1) % 6;
+      });
+    });
     _startProgressTimer();
 
-    // Turn on flashlight for the full session
-    await _cameraController!.setFlashMode(FlashMode.torch);
-
-    for (int i = 0; i < roundCount; i++) {
-      try {
-        await _cameraController!.startVideoRecording();
-        await Future.delayed(Duration(seconds: 10));
-        if (_cameraController!.value.isRecordingVideo) {
-          final file = await _cameraController!.stopVideoRecording();
-          final result = await _sendVideoToBackend(file.path);
-
-          // Handle backend rejection
-          if (result == 'not_reading' || result == 'server_error') {
-            await _handleSessionFailure("Session failed. Please try again.");
-            return;
-          }
-        }
-      } catch (e) {
-        print("❌ Video recording or upload error: $e");
-        await _handleSessionFailure("Recording error. Please try again.");
-        return;
-      }
+    try {
+      await _cameraController!.setFlashMode(FlashMode.torch);
+    } catch (e) {
+      debugPrint('Could not enable flash: $e');
     }
 
-    // Turn off flashlight after the session ends
-    await _cameraController!.setFlashMode(FlashMode.off);
+    String? videoPath;
+    try {
+      await _cameraController!.startVideoRecording();
+      _endRecordingCompleter = Completer<void>();
+      final endFuture = _endRecordingCompleter!.future;
+      final maxDuration = Future<void>.delayed(
+        const Duration(seconds: maxSessionSeconds),
+      );
+      await Future.any<void>([endFuture, maxDuration]);
 
-    _animationTimer.cancel();
-    _progressTimer.cancel();
+      if (!mounted) return;
+      if (!_cameraController!.value.isRecordingVideo) {
+        await _handleSessionFailure('Recording was interrupted.');
+        return;
+      }
+      final file = await _cameraController!.stopVideoRecording();
+      videoPath = file.path;
+    } catch (e) {
+      debugPrint('Recording error: $e');
+      await _handleSessionFailure('Recording error. Please try again.');
+      return;
+    }
 
-    _isRecording = false;
-    _statusMessage = "Finished";
-    setState(() {});
+    try {
+      await _cameraController?.setFlashMode(FlashMode.off);
+    } catch (_) {}
 
-    await _sendEndRequest();
+    _animationTimer?.cancel();
+    _progressTimer?.cancel();
+    _animationTimer = null;
+    _progressTimer = null;
+    _endRecordingCompleter = null;
+
+    if (!mounted) return;
+    setState(() {
+      _isRecording = false;
+      _isProcessing = true;
+      _statusMessage = 'Processing…';
+    });
+
+    final uploadResult = await _sendVideoToBackend(videoPath);
+    if (!mounted) return;
+
+    if (uploadResult == 'not_reading') {
+      await _handleSessionFailure(
+        'Could not read your pulse correctly. Cover the lens and try again.',
+      );
+      return;
+    }
+    if (uploadResult == 'server_error') {
+      await _handleSessionFailure('Server error. Please try again.');
+      return;
+    }
+
+    await _sendEndAndNavigate();
   }
 
   Future<String?> _sendVideoToBackend(String filePath) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('https://monitor-app-ajbjg3d3dgayghc9.israelcentral-01.azurewebsites.net/process_video'),
+      Uri.parse('$_apiBase/process_video'),
     );
     request.files.add(await http.MultipartFile.fromPath('video', filePath));
 
     try {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-
-      print("📡 Response: ${response.statusCode} ${response.body}");
+      debugPrint('process_video: ${response.statusCode} ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['not_reading'] == true) return 'not_reading';
+        if (data is Map && data['not_reading'] == true) return 'not_reading';
         return 'ok';
-      } else {
-        return 'server_error';
       }
+      return 'server_error';
     } catch (e) {
-      print("❌ Error sending video: $e");
+      debugPrint('Error sending video: $e');
       return 'server_error';
     }
   }
 
-  Future<void> _sendEndRequest() async {
+  Future<void> _sendEndAndNavigate() async {
     try {
-      final response = await http.post(
-        Uri.parse('https://monitor-app-ajbjg3d3dgayghc9.israelcentral-01.azurewebsites.net/end'),
-      );
+      final response = await http.post(Uri.parse('$_apiBase/end'));
+      debugPrint('end: ${response.statusCode} ${response.body}');
 
-      print("📡 End Response: ${response.statusCode} ${response.body}");
+      if (response.statusCode != 200) {
+        await _handleSessionFailure('Server error. Please try again.');
+        return;
+      }
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      final decoded = json.decode(response.body);
+      if (decoded is! Map) {
+        await _handleSessionFailure('Server error. Please try again.');
+        return;
+      }
+      final data = Map<String, dynamic>.from(decoded);
+      final packagedData = {
+        'peaks_count': data['peaks_count'],
+        'real_peaks': (data['real_peaks'] as List).map((e) => (e as num).toDouble()).toList(),
+        'fake_peaks': (data['fake_peaks'] as List).map((e) => (e as num).toDouble()).toList(),
+        'duration': (data['duration'] as num).toDouble(),
+        'clean_signal': (data['clean_signal'] as List).map((e) => (e as num).toDouble()).toList(),
+      };
 
-        final packagedData = {
-          'peaks_count': data['peaks_count'],
-          'real_peaks': (data['real_peaks'] as List)
-              .map((e) => (e as num).toDouble())
-              .toList(),
-          'fake_peaks': (data['fake_peaks'] as List)
-              .map((e) => (e as num).toDouble())
-              .toList(),
-          'duration': (data['duration'] as num).toDouble(),
-          'clean_signal': (data['clean_signal'] as List)
-              .map((e) => (e as num).toDouble())
-              .toList(),
-        };
+      if (!mounted) return;
 
-        if (!mounted) return;
-
+      if (widget.flow == RecordingFlow.pilote) {
+        final id = SessionDataManager().saveSessionData(
+          packagedData,
+          startedAtUtc: _sessionStartedAtUtc,
+        );
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => GuessingScreen(data: packagedData),
-          ),
+          MaterialPageRoute(builder: (_) => PiloteExportScreen(sessionId: id)),
         );
       } else {
-        await _handleSessionFailure("Server error. Please try again.");
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => GuessingScreen(data: packagedData)),
+        );
       }
     } catch (e) {
-      print("❌ Error during end session request: $e");
-      await _handleSessionFailure("Network error. Please try again.");
+      debugPrint('Error during end session: $e');
+      await _handleSessionFailure('Network error. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 
   Future<void> _handleSessionFailure(String message) async {
-    _animationTimer.cancel();
-    _progressTimer.cancel();
+    _animationTimer?.cancel();
+    _progressTimer?.cancel();
+    _animationTimer = null;
+    _progressTimer = null;
+    _endRecordingCompleter = null;
     _isRecording = false;
+    _isProcessing = false;
     _progress = 0.0;
     _elapsedMillis = 0;
+
+    try {
+      if (_cameraController?.value.isRecordingVideo == true) {
+        await _cameraController!.stopVideoRecording();
+      }
+    } catch (_) {}
 
     try {
       await _cameraController?.setFlashMode(FlashMode.off);
     } catch (_) {}
 
-    setState(() {
-      _statusMessage = message;
-    });
+    if (mounted) {
+      setState(() {
+        _statusMessage = message;
+      });
+    }
   }
 
-  void _startAnimationTimer() {
-    _animationTimer = Timer.periodic(Duration(milliseconds: 1500), (timer) {
-      setState(() {
-        _heartFrame = (_heartFrame + 1) % 6;
-      });
+  void _onEndPressed() {
+    if (!_isRecording) return;
+    setState(() {
+      _statusMessage = 'Stopping…';
     });
+    _signalEndRecording();
   }
 
   void _startProgressTimer() {
-    final totalMillis = TOTAL_DURATION * 1000;
-    _progressTimer = Timer.periodic(Duration(milliseconds: 100), (timer) {
+    final totalMillis = maxSessionSeconds * 1000;
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (!mounted) return;
       setState(() {
         _elapsedMillis += 100;
         _progress = (_elapsedMillis / totalMillis).clamp(0.0, 1.0);
@@ -189,19 +283,34 @@ class _BiofeedbackScreenState extends State<BiofeedbackScreen> {
     });
   }
 
+  String _formatElapsed() {
+    final s = _elapsedMillis ~/ 1000;
+    final m = s ~/ 60;
+    final rs = s % 60;
+    return '${m.toString().padLeft(2, '0')}:${rs.toString().padLeft(2, '0')}';
+  }
+
+  String get _appBarTitle =>
+      widget.flow == RecordingFlow.pilote ? 'Pilote recording' : 'Heartbeat Session';
+
   @override
   void dispose() {
+    _animationTimer?.cancel();
+    _progressTimer?.cancel();
     _cameraController?.dispose();
-    if (_animationTimer.isActive) _animationTimer.cancel();
-    if (_progressTimer.isActive) _progressTimer.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final busy = _isRecording || _isProcessing;
+    final accent = widget.flow == RecordingFlow.pilote
+        ? Colors.deepPurpleAccent
+        : Colors.redAccent;
+
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(title: Text("Heartbeat Session")),
+      appBar: AppBar(title: Text(_appBarTitle)),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -211,46 +320,75 @@ class _BiofeedbackScreenState extends State<BiofeedbackScreen> {
                   height: 150,
                   child: CameraPreview(_cameraController!),
                 )
-              : CircularProgressIndicator(),
-          SizedBox(height: 30),
-          _isRecording
-              ? Column(
-                  children: [
-                    AnimatedSwitcher(
-                      duration: Duration(milliseconds: 800),
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      ),
-                      child: Image.asset(
-                        "assets/heart$_heartFrame.png",
-                        key: ValueKey<int>(_heartFrame),
-                        width: 100,
-                        height: 100,
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 40),
-                      child: LinearProgressIndicator(
-                        value: _progress,
-                        backgroundColor: Colors.white12,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.redAccent),
-                        minHeight: 8,
-                      ),
-                    ),
-                  ],
-                )
-              : Text(
-                  _statusMessage,
+              : const CircularProgressIndicator(),
+          const SizedBox(height: 30),
+          if (_isProcessing)
+            const Column(
+              children: [
+                CircularProgressIndicator(color: Colors.white),
+                SizedBox(height: 16),
+                Text(
+                  'Processing…',
                   style: TextStyle(color: Colors.white, fontSize: 18),
-                  textAlign: TextAlign.center,
                 ),
-          SizedBox(height: 40),
-          ElevatedButton(
-            onPressed: _isRecording ? null : _startRecordingSession,
-            child: Text("Start"),
-          ),
+              ],
+            )
+          else if (_isRecording)
+            Column(
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 800),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  ),
+                  child: Image.asset(
+                    'assets/heart$_heartFrame.png',
+                    key: ValueKey<int>(_heartFrame),
+                    width: 100,
+                    height: 100,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _formatElapsed(),
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: LinearProgressIndicator(
+                    value: _progress,
+                    backgroundColor: Colors.white12,
+                    valueColor: AlwaysStoppedAnimation<Color>(accent),
+                    minHeight: 8,
+                  ),
+                ),
+              ],
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                _statusMessage,
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          const SizedBox(height: 40),
+          if (!_isProcessing && !_isRecording)
+            ElevatedButton(
+              onPressed: _cameraController?.value.isInitialized == true
+                  ? _startRecordingSession
+                  : null,
+              child: const Text('Start'),
+            )
+          else if (_isRecording)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: busy ? _onEndPressed : null,
+              child: const Text('End'),
+            ),
         ],
       ),
     );
