@@ -1,11 +1,18 @@
-import numpy as np
-from flask import Flask, request, jsonify
 import os
 import logging
 
+from flask import Flask, request, jsonify
+
 from video_edit import process_video_frames, get_video_duration_seconds
-from filter_and_peaks import denoise_ppg, find_peaks
-import globals
+from filter_and_peaks import (
+    denoise_ppg,
+    find_peaks,
+    filter_peaks_to_window,
+    validate_peaks_quality,
+    compute_quality_metrics,
+    build_fake_peaks,
+)
+from session_timing import parse_recording_started_at, build_peak_window_metadata
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s", force=True)
 
@@ -13,63 +20,67 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(mes
 def setup_video_route(app):
     @app.route('/process_video', methods=['POST'])
     def process_video():
+        video_path = './temp_video.mp4'
         try:
-            globals.reset_all()
-
             file = request.files.get('video')
             if not file:
                 return jsonify({'error': 'No video file received.'}), 400
 
-            video_path = './temp_video.mp4'
+            recording_started_at = parse_recording_started_at(
+                request.form.get('recording_started_at')
+            )
+
             file.save(video_path)
             if not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
-                raise Exception("Invalid video file.")
+                raise Exception('Invalid video file.')
 
             duration_sec = get_video_duration_seconds(video_path)
             fps, intensities, processed_duration, width, height = process_video_frames(
                 video_path, target_duration=duration_sec
             )
             if not intensities:
-                raise Exception("No frames were processed.")
+                raise Exception('No frames were processed.')
 
-            globals.session_duration = float(processed_duration)
-            globals.session_fps = float(fps)
-            globals.video_width = int(width)
-            globals.video_height = int(height)
+            duration = float(processed_duration)
+            peak_window = build_peak_window_metadata(duration, recording_started_at)
+            window_lo = peak_window['peak_window_start_sec']
+            window_hi = peak_window['peak_window_end_sec']
 
-            clean_signal, filtered_signal, not_reading = denoise_ppg(intensities, fps)
+            clean_signal, _filtered_signal = denoise_ppg(intensities, fps)
+            peaks_all = find_peaks(clean_signal, fps)
+            real_peaks = filter_peaks_to_window(peaks_all, duration)
 
-            if not_reading:
+            quality = compute_quality_metrics(real_peaks, duration, fps, width, height)
+
+            if not validate_peaks_quality(real_peaks, duration):
                 return jsonify({'not_reading': True}), 200
 
-            peaks_in_window = find_peaks(clean_signal, fps)
-            upper = max(globals.session_duration - 0.5, 0.5)
-            final_peaks = [x for x in peaks_in_window if 0.5 <= x <= upper]
-
-            globals.add_to_round_signal(clean_signal)
-            globals.add_to_round_peaks(final_peaks)
-            globals.round_count = 1
-
-            if globals.testing_mode:
-                return jsonify({
-                    'clean_signal': clean_signal.tolist(),
-                    'filtered_signal': filtered_signal.tolist(),
-                    'peaks_in_window': peaks_in_window,
-                    'duration': globals.session_duration,
-                    'fps': globals.session_fps,
-                    'video_width': globals.video_width,
-                    'video_height': globals.video_height,
-                }), 200
+            fake_peaks = build_fake_peaks(real_peaks, window_lo, window_hi)
+            signal = [float(x) for x in clean_signal]
 
             return jsonify({
-                'message': 'Processed successfully.',
-                'duration': globals.session_duration,
-                'fps': globals.session_fps,
-                'video_width': globals.video_width,
-                'video_height': globals.video_height,
+                'signal': signal,
+                'real_peaks': real_peaks,
+                'fake_peaks': fake_peaks,
+                'peak_window_start_sec': peak_window['peak_window_start_sec'],
+                'peak_window_end_sec': peak_window['peak_window_end_sec'],
+                **(
+                    {
+                        'peak_window_start_utc': peak_window['peak_window_start_utc'],
+                        'peak_window_end_utc': peak_window['peak_window_end_utc'],
+                    }
+                    if 'peak_window_start_utc' in peak_window
+                    else {}
+                ),
+                'quality': quality,
             }), 200
 
         except Exception as e:
-            logging.exception("Unhandled exception:")
-            globals.reset_all()
+            logging.exception('Unhandled exception:')
             return jsonify({'server_error': True, 'error': str(e)}), 500
+        finally:
+            if os.path.exists(video_path):
+                try:
+                    os.remove(video_path)
+                except OSError:
+                    pass

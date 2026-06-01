@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
 
-import globals
-
 
 def get_video_duration_seconds(input_path):
     """Returns actual playback duration in seconds from the video file."""
