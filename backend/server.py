@@ -38,7 +38,10 @@ def end_session():
             "real_peaks": real_peaks,
             "fake_peaks": noisy_peaks,
             "duration": duration,
-            "clean_signal": globals.round_signal
+            "clean_signal": globals.round_signal,
+            "fps": globals.session_fps,
+            "video_width": globals.video_width,
+            "video_height": globals.video_height,
         }
 
         # Step 4: Reset global session state

@@ -26,13 +26,16 @@ def setup_video_route(app):
                 raise Exception("Invalid video file.")
 
             duration_sec = get_video_duration_seconds(video_path)
-            fps, intensities, processed_duration = process_video_frames(
+            fps, intensities, processed_duration, width, height = process_video_frames(
                 video_path, target_duration=duration_sec
             )
             if not intensities:
                 raise Exception("No frames were processed.")
 
             globals.session_duration = float(processed_duration)
+            globals.session_fps = float(fps)
+            globals.video_width = int(width)
+            globals.video_height = int(height)
 
             clean_signal, filtered_signal, not_reading = denoise_ppg(intensities, fps)
 
@@ -53,11 +56,17 @@ def setup_video_route(app):
                     'filtered_signal': filtered_signal.tolist(),
                     'peaks_in_window': peaks_in_window,
                     'duration': globals.session_duration,
+                    'fps': globals.session_fps,
+                    'video_width': globals.video_width,
+                    'video_height': globals.video_height,
                 }), 200
 
             return jsonify({
                 'message': 'Processed successfully.',
                 'duration': globals.session_duration,
+                'fps': globals.session_fps,
+                'video_width': globals.video_width,
+                'video_height': globals.video_height,
             }), 200
 
         except Exception as e:
