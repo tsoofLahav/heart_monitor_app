@@ -7,6 +7,8 @@ EDGE_GAP_SEC = 0.5
 MIN_HR_BPM = 45.0
 MAX_HR_BPM = 150.0
 MAX_IBI_CV = 0.25
+REFRACTORY_MIN_SEC = 0.20
+REFRACTORY_IBI_FRAC = 0.30
 
 
 def butter_bandpass_filter(signal, fs, lowcut=0.8, highcut=3.0, order=6):
@@ -32,12 +34,39 @@ def denoise_ppg(raw_signal, fs):
     return normalized_signal, filtered_signal
 
 
+def _merge_close_peaks(peak_indices, signal, fs):
+    """
+    Drop shorter peaks when two detections fall within one beat (e.g. dicrotic notch).
+    Keeps the sample with the larger signal value.
+    """
+    if len(peak_indices) <= 1:
+        return peak_indices
+
+    peak_indices = np.sort(np.asarray(peak_indices, dtype=int))
+    signal = np.asarray(signal)
+
+    mean_ibi_sec = float(np.mean(np.diff(peak_indices)) / fs)
+    min_gap_sec = max(REFRACTORY_MIN_SEC, REFRACTORY_IBI_FRAC * mean_ibi_sec)
+    min_gap_samples = max(1, int(min_gap_sec * fs))
+
+    kept = [int(peak_indices[0])]
+    for idx in peak_indices[1:]:
+        idx = int(idx)
+        if idx - kept[-1] < min_gap_samples:
+            if signal[idx] > signal[kept[-1]]:
+                kept[-1] = idx
+        else:
+            kept.append(idx)
+    return np.array(kept, dtype=int)
+
+
 def find_peaks(signal, fs):
     """Find systolic peaks; returns peak times in seconds (relative to video start)."""
     signal = np.array(signal)
     distance = max(1, int(fs * 0.33))
     prominence = 0.4
     peaks, _ = scipy_find_peaks(signal, distance=distance, prominence=prominence)
+    peaks = _merge_close_peaks(peaks, signal, fs)
     return (peaks / fs).tolist()
 
 
