@@ -11,7 +11,7 @@ import 'session_data_manager.dart';
 
 const String _apiBase =
     'https://monitor-app-ajbjg3d3dgayghc9.israelcentral-01.azurewebsites.net';
-const int maxSessionSeconds = 25;
+const int maxSessionSeconds = 27;
 
 enum RecordingFlow { regular, pilote }
 
@@ -64,6 +64,11 @@ class _HeartbeatRecordingScreenState extends State<HeartbeatRecordingScreen> {
       enableAudio: false,
     );
     await _cameraController!.initialize();
+    try {
+      await _cameraController!.setFlashMode(FlashMode.torch);
+    } catch (e) {
+      debugPrint('Could not enable preview flash: $e');
+    }
     if (mounted) setState(() {});
   }
 
@@ -138,32 +143,70 @@ class _HeartbeatRecordingScreenState extends State<HeartbeatRecordingScreen> {
     setState(() {
       _isRecording = false;
       _isProcessing = true;
-      _statusMessage = 'Processing…';
     });
 
     final uploadResult = await _sendVideoToBackend(videoPath);
     if (!mounted) return;
 
-    if (uploadResult == 'not_reading') {
-      await _handleSessionFailure(
-        'Could not read your pulse correctly. Cover the lens and try again.',
-      );
-      return;
-    }
-    if (uploadResult == 'server_error') {
+    if (uploadResult == null) {
       await _handleSessionFailure('Server error. Please try again.');
       return;
     }
+    if (uploadResult['not_reading'] == true) {
+      await _handleNotReading();
+      return;
+    }
 
-    await _sendEndAndNavigate();
+    await _navigateWithSessionData(_packageSessionData(uploadResult));
   }
 
-  Future<String?> _sendVideoToBackend(String filePath) async {
+  Map<String, dynamic> _packageSessionData(Map<String, dynamic> data) {
+    final qualityRaw = data['quality'];
+    final quality =
+        qualityRaw is Map ? Map<String, dynamic>.from(qualityRaw) : <String, dynamic>{};
+
+    final realPeaks = (data['real_peaks'] as List)
+        .map((e) => (e as num).toDouble())
+        .toList();
+    final signal = (data['signal'] as List).map((e) => (e as num).toDouble()).toList();
+
+    return {
+      'peaks_count': quality['peaks_count'] ?? realPeaks.length,
+      'real_peaks': realPeaks,
+      'fake_peaks': (data['fake_peaks'] as List).map((e) => (e as num).toDouble()).toList(),
+      'duration': (quality['duration_sec'] as num?)?.toDouble() ?? 0.0,
+      'clean_signal': signal,
+      'quality': quality,
+      if (quality['fps'] != null) 'fps': (quality['fps'] as num).toDouble(),
+      if (quality['video_width'] != null)
+        'video_width': (quality['video_width'] as num).toInt(),
+      if (quality['video_height'] != null)
+        'video_height': (quality['video_height'] as num).toInt(),
+      if (data['signal_start_sec'] != null)
+        'signal_start_sec': (data['signal_start_sec'] as num).toDouble(),
+      if (data['signal_end_sec'] != null)
+        'signal_end_sec': (data['signal_end_sec'] as num).toDouble(),
+      if (data['peak_window_start_sec'] != null)
+        'peak_window_start_sec': (data['peak_window_start_sec'] as num).toDouble(),
+      if (data['peak_window_end_sec'] != null)
+        'peak_window_end_sec': (data['peak_window_end_sec'] as num).toDouble(),
+      if (data['peak_window_start_utc'] != null)
+        'peak_window_start_utc': data['peak_window_start_utc'].toString(),
+      if (data['peak_window_end_utc'] != null)
+        'peak_window_end_utc': data['peak_window_end_utc'].toString(),
+    };
+  }
+
+  Future<Map<String, dynamic>?> _sendVideoToBackend(String filePath) async {
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('$_apiBase/process_video'),
     );
     request.files.add(await http.MultipartFile.fromPath('video', filePath));
+    if (_sessionStartedAtUtc != null) {
+      request.fields['recording_started_at'] =
+          _sessionStartedAtUtc!.toUtc().toIso8601String();
+    }
 
     try {
       final streamedResponse = await request.send();
@@ -171,41 +214,26 @@ class _HeartbeatRecordingScreenState extends State<HeartbeatRecordingScreen> {
       debugPrint('process_video: ${response.statusCode} ${response.body}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data is Map && data['not_reading'] == true) return 'not_reading';
-        return 'ok';
+        final decoded = json.decode(response.body);
+        if (decoded is! Map) return null;
+        final data = Map<String, dynamic>.from(decoded);
+        if (data['not_reading'] == true) {
+          return {'not_reading': true};
+        }
+        if (data['signal'] != null && data['real_peaks'] != null) {
+          return data;
+        }
+        return null;
       }
-      return 'server_error';
+      return null;
     } catch (e) {
       debugPrint('Error sending video: $e');
-      return 'server_error';
+      return null;
     }
   }
 
-  Future<void> _sendEndAndNavigate() async {
+  Future<void> _navigateWithSessionData(Map<String, dynamic> packagedData) async {
     try {
-      final response = await http.post(Uri.parse('$_apiBase/end'));
-      debugPrint('end: ${response.statusCode} ${response.body}');
-
-      if (response.statusCode != 200) {
-        await _handleSessionFailure('Server error. Please try again.');
-        return;
-      }
-
-      final decoded = json.decode(response.body);
-      if (decoded is! Map) {
-        await _handleSessionFailure('Server error. Please try again.');
-        return;
-      }
-      final data = Map<String, dynamic>.from(decoded);
-      final packagedData = {
-        'peaks_count': data['peaks_count'],
-        'real_peaks': (data['real_peaks'] as List).map((e) => (e as num).toDouble()).toList(),
-        'fake_peaks': (data['fake_peaks'] as List).map((e) => (e as num).toDouble()).toList(),
-        'duration': (data['duration'] as num).toDouble(),
-        'clean_signal': (data['clean_signal'] as List).map((e) => (e as num).toDouble()).toList(),
-      };
-
       if (!mounted) return;
 
       if (widget.flow == RecordingFlow.pilote) {
@@ -224,7 +252,7 @@ class _HeartbeatRecordingScreenState extends State<HeartbeatRecordingScreen> {
         );
       }
     } catch (e) {
-      debugPrint('Error during end session: $e');
+      debugPrint('Error navigating after upload: $e');
       await _handleSessionFailure('Network error. Please try again.');
     } finally {
       if (mounted) {
@@ -232,6 +260,60 @@ class _HeartbeatRecordingScreenState extends State<HeartbeatRecordingScreen> {
           _isProcessing = false;
         });
       }
+    }
+  }
+
+  Future<void> _handleNotReading() async {
+    _animationTimer?.cancel();
+    _progressTimer?.cancel();
+    _animationTimer = null;
+    _progressTimer = null;
+    _endRecordingCompleter = null;
+    _isRecording = false;
+    _isProcessing = false;
+    _progress = 0.0;
+    _elapsedMillis = 0;
+    _sessionStartedAtUtc = null;
+
+    try {
+      if (_cameraController?.value.isRecordingVideo == true) {
+        await _cameraController!.stopVideoRecording();
+      }
+    } catch (_) {}
+
+    try {
+      await _cameraController?.setFlashMode(FlashMode.off);
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Reading error',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'We could not get a reliable pulse reading. '
+          'Keep your finger firmly over the camera lens and try again.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Start again'),
+          ),
+        ],
+      ),
+    );
+
+    if (mounted) {
+      setState(() {
+        _statusMessage = 'Cover lens gently with finger and press Start';
+      });
     }
   }
 
@@ -301,6 +383,28 @@ class _HeartbeatRecordingScreenState extends State<HeartbeatRecordingScreen> {
     super.dispose();
   }
 
+  Widget _buildProcessingBody() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('⏳', style: TextStyle(fontSize: 56)),
+            SizedBox(height: 28),
+            CircularProgressIndicator(color: Colors.white),
+            SizedBox(height: 28),
+            Text(
+              'Processing data, wait for results',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final busy = _isRecording || _isProcessing;
@@ -311,8 +415,11 @@ class _HeartbeatRecordingScreenState extends State<HeartbeatRecordingScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(title: Text(_appBarTitle)),
-      body: Column(
+      body: _isProcessing
+          ? _buildProcessingBody()
+          : Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _cameraController?.value.isInitialized == true
               ? SizedBox(
@@ -322,18 +429,7 @@ class _HeartbeatRecordingScreenState extends State<HeartbeatRecordingScreen> {
                 )
               : const CircularProgressIndicator(),
           const SizedBox(height: 30),
-          if (_isProcessing)
-            const Column(
-              children: [
-                CircularProgressIndicator(color: Colors.white),
-                SizedBox(height: 16),
-                Text(
-                  'Processing…',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              ],
-            )
-          else if (_isRecording)
+          if (_isRecording)
             Column(
               children: [
                 AnimatedSwitcher(
@@ -376,7 +472,7 @@ class _HeartbeatRecordingScreenState extends State<HeartbeatRecordingScreen> {
               ),
             ),
           const SizedBox(height: 40),
-          if (!_isProcessing && !_isRecording)
+          if (!_isRecording)
             ElevatedButton(
               onPressed: _cameraController?.value.isInitialized == true
                   ? _startRecordingSession

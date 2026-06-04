@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'parallel_Video.dart';
 import 'animated_video_page.dart';
+import 'signal_chart_painter.dart';
 
 class GuessingScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -200,7 +201,11 @@ class _GuessingScreenState extends State<GuessingScreen> {
                             height: 150,
                             width: double.infinity,
                             child: CustomPaint(
-                              painter: SignalPainter(cleanSignal),
+                              painter: SignalWithPeaksPainter(
+                                signal: cleanSignal,
+                                realPeaks: realPeaks,
+                                duration: duration,
+                              ),
                             ),
                           ),
                       ],
@@ -211,39 +216,3 @@ class _GuessingScreenState extends State<GuessingScreen> {
   }
 }
 
-class SignalPainter extends CustomPainter {
-  final List<double> signal;
-
-  SignalPainter(this.signal);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.greenAccent
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    if (signal.isEmpty) return;
-
-    final maxVal = signal.reduce((a, b) => a > b ? a : b);
-    final minVal = signal.reduce((a, b) => a < b ? a : b);
-    final range = (maxVal - minVal).abs() + 1e-6;
-
-    for (int i = 0; i < signal.length; i++) {
-      double x = (i / (signal.length - 1)) * size.width;
-      double y = size.height - ((signal[i] - minVal) / range) * size.height;
-
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}

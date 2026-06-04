@@ -2,83 +2,72 @@ PODS:
   - audioplayers_darwin (0.0.1):
     - Flutter
     - FlutterMacOS
-  - better_open_file (0.0.1):
-    - Flutter
   - camera_avfoundation (0.0.1):
     - Flutter
-  - camerawesome (0.0.1):
-    - Flutter
-  - device_info_plus (0.0.1):
-    - Flutter
+  - FBAEMKit (14.0.0):
+    - FBSDKCoreKit_Basics (= 14.0.0)
+  - FBSDKCoreKit (14.0.0):
+    - FBAEMKit (= 14.0.0)
+    - FBSDKCoreKit_Basics (= 14.0.0)
+  - FBSDKCoreKit_Basics (14.0.0)
+  - FBSDKLoginKit (14.0.0):
+    - FBSDKCoreKit (= 14.0.0)
+  - FBSDKShareKit (14.0.0):
+    - FBSDKCoreKit (= 14.0.0)
   - Flutter (1.0.0)
-  - flutter_soloud (0.0.1):
+  - flutter_share_me (0.0.1):
+    - FBSDKCoreKit (~> 14.0.0)
+    - FBSDKLoginKit (~> 14.0.0)
+    - FBSDKShareKit (~> 14.0.0)
     - Flutter
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
   - share_plus (0.0.1):
     - Flutter
-  - torch_light (0.0.1):
-    - Flutter
-  - vibration (3.0.0):
-    - Flutter
-  - video_player_avfoundation (0.0.1):
-    - Flutter
-    - FlutterMacOS
 
 DEPENDENCIES:
   - audioplayers_darwin (from `.symlinks/plugins/audioplayers_darwin/darwin`)
-  - better_open_file (from `.symlinks/plugins/better_open_file/ios`)
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
-  - camerawesome (from `.symlinks/plugins/camerawesome/ios`)
-  - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - Flutter (from `Flutter`)
-  - flutter_soloud (from `.symlinks/plugins/flutter_soloud/ios`)
+  - flutter_share_me (from `.symlinks/plugins/flutter_share_me/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
-  - torch_light (from `.symlinks/plugins/torch_light/ios`)
-  - vibration (from `.symlinks/plugins/vibration/ios`)
-  - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
+
+SPEC REPOS:
+  trunk:
+    - FBAEMKit
+    - FBSDKCoreKit
+    - FBSDKCoreKit_Basics
+    - FBSDKLoginKit
+    - FBSDKShareKit
 
 EXTERNAL SOURCES:
   audioplayers_darwin:
     :path: ".symlinks/plugins/audioplayers_darwin/darwin"
-  better_open_file:
-    :path: ".symlinks/plugins/better_open_file/ios"
   camera_avfoundation:
     :path: ".symlinks/plugins/camera_avfoundation/ios"
-  camerawesome:
-    :path: ".symlinks/plugins/camerawesome/ios"
-  device_info_plus:
-    :path: ".symlinks/plugins/device_info_plus/ios"
   Flutter:
     :path: Flutter
-  flutter_soloud:
-    :path: ".symlinks/plugins/flutter_soloud/ios"
+  flutter_share_me:
+    :path: ".symlinks/plugins/flutter_share_me/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   share_plus:
     :path: ".symlinks/plugins/share_plus/ios"
-  torch_light:
-    :path: ".symlinks/plugins/torch_light/ios"
-  vibration:
-    :path: ".symlinks/plugins/vibration/ios"
-  video_player_avfoundation:
-    :path: ".symlinks/plugins/video_player_avfoundation/darwin"
 
 SPEC CHECKSUMS:
   audioplayers_darwin: 4027b33a8f471d996c13f71cb77f0b1583b5d923
-  better_open_file: 03cf320415d4d3f46b6e00adc4a567d76c1a399d
   camera_avfoundation: adb0207d868b2d873e895371d88448399ab78d87
-  camerawesome: 7ad7493b41b648d2fab64b1fd5ae08299b913120
-  device_info_plus: 97af1d7e84681a90d0693e63169a5d50e0839a0d
+  FBAEMKit: d00064597439e75885c70d9adbcb5f3e9ad84f5d
+  FBSDKCoreKit: e5d3acfffe5063a9d0b967ba2ad1f5afc460cf43
+  FBSDKCoreKit_Basics: 1ff46a12e80f0b66e6c00e1ef32d6a5b5b9008a5
+  FBSDKLoginKit: dbe86ef42ab142f3bd0f1c904a21bb33f31c5569
+  FBSDKShareKit: 2f6a6a1445cc1b8ea0f733e60d02d2f7c4ebf8be
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  flutter_soloud: 78b2184802f2183a6799c6c6fcbc8e99edf4cf9a
+  flutter_share_me: 1fb559741e0dff56a9d2bdeaf4d966b0b47449ae
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   share_plus: 8b6f8b3447e494cca5317c8c3073de39b3600d1f
-  torch_light: 682062fa12102172fa38b6b14c106d93b060f83e
-  vibration: 3797858f8cbf53d841e189ef8bd533d96e4ca93c
-  video_player_avfoundation: 7c6c11d8470e1675df7397027218274b6d2360b3
 
 PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
 
