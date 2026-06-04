@@ -11,6 +11,12 @@ from filter_and_peaks import (
     validate_peaks_quality,
     compute_quality_metrics,
     build_fake_peaks,
+    peaks_local_to_video,
+    peaks_video_to_local,
+    peak_detection_window_local,
+    stable_signal_duration_sec,
+    SIGNAL_START_OFFSET_SEC,
+    MIN_STABLE_SIGNAL_SEC,
 )
 from session_timing import parse_recording_started_at, build_peak_window_metadata
 
@@ -47,19 +53,35 @@ def setup_video_route(app):
             window_hi = peak_window['peak_window_end_sec']
 
             clean_signal, _filtered_signal = denoise_ppg(intensities, fps)
-            peaks_all = find_peaks(clean_signal, fps)
-            real_peaks = filter_peaks_to_window(peaks_all, duration)
-
-            quality = compute_quality_metrics(real_peaks, duration, fps, width, height)
-
-            if not validate_peaks_quality(real_peaks, duration):
+            stable_duration = stable_signal_duration_sec(clean_signal, fps)
+            if stable_duration < MIN_STABLE_SIGNAL_SEC:
                 return jsonify({'not_reading': True}), 200
 
-            fake_peaks = build_fake_peaks(real_peaks, window_lo, window_hi)
+            peaks_local = find_peaks(clean_signal, fps)
+            peaks_video = peaks_local_to_video(peaks_local)
+            real_peaks_video = filter_peaks_to_window(peaks_video, duration)
+            real_peaks = peaks_video_to_local(real_peaks_video)
+
+            quality = compute_quality_metrics(
+                real_peaks_video,
+                duration,
+                fps,
+                width,
+                height,
+                stable_duration_sec=stable_duration,
+            )
+
+            if not validate_peaks_quality(real_peaks_video, duration):
+                return jsonify({'not_reading': True}), 200
+
+            window_lo_local, window_hi_local = peak_detection_window_local(duration)
+            fake_peaks = build_fake_peaks(real_peaks, window_lo_local, window_hi_local)
             signal = [float(x) for x in clean_signal]
 
             return jsonify({
                 'signal': signal,
+                'signal_start_sec': SIGNAL_START_OFFSET_SEC,
+                'signal_end_sec': round(SIGNAL_START_OFFSET_SEC + stable_duration, 3),
                 'real_peaks': real_peaks,
                 'fake_peaks': fake_peaks,
                 'peak_window_start_sec': peak_window['peak_window_start_sec'],
