@@ -8,6 +8,7 @@ from filter_and_peaks import (
     denoise_ppg,
     find_peaks,
     filter_peaks_to_window,
+    validate_signal_quality,
     validate_peaks_quality,
     compute_quality_metrics,
     build_fake_peaks,
@@ -55,6 +56,12 @@ def setup_video_route(app):
             clean_signal, _filtered_signal = denoise_ppg(intensities, fps)
             stable_duration = stable_signal_duration_sec(clean_signal, fps)
             if stable_duration < MIN_STABLE_SIGNAL_SEC:
+                logging.info('not_reading: stable_signal_too_short')
+                return jsonify({'not_reading': True}), 200
+
+            signal_ok, fail_reason = validate_signal_quality(clean_signal, fps)
+            if not signal_ok:
+                logging.info('not_reading: %s', fail_reason)
                 return jsonify({'not_reading': True}), 200
 
             peaks_local = find_peaks(clean_signal, fps)
@@ -71,7 +78,14 @@ def setup_video_route(app):
                 stable_duration_sec=stable_duration,
             )
 
-            if not validate_peaks_quality(real_peaks_video, duration):
+            peaks_ok, fail_reason = validate_peaks_quality(
+                real_peaks,
+                stable_duration,
+                signal=clean_signal,
+                fs=fps,
+            )
+            if not peaks_ok:
+                logging.info('not_reading: %s', fail_reason)
                 return jsonify({'not_reading': True}), 200
 
             window_lo_local, window_hi_local = peak_detection_window_local(duration)
