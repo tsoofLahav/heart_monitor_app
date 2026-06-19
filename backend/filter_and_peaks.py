@@ -19,9 +19,11 @@ REFRACTORY_IBI_FRAC = 0.30
 OUTLIER_MAD_SCALE = 4.0
 MAX_OUTLIER_FRAC = 0.02
 BEAT_CORRELATION_THRESHOLD = 0.32
-MIN_PEAK_PROMINENCE = 0.58
-PEAK_MIN_DISTANCE_SEC = 0.45
-PEAK_HEIGHT_MEDIAN_FRAC = 0.50
+MIN_PEAK_PROMINENCE = 0.52
+PEAK_MIN_DISTANCE_SEC = 0.40
+PEAK_LOCAL_HEIGHT_FRAC = 0.38
+PEAK_FILL_PROMINENCE_FRAC = 0.72
+DIASTOLIC_MERGE_FRAC = 0.35
 MAX_PEAK_AMPLITUDE_CV = 0.42
 MAX_BEAT_COUNT_FACTOR = 1.10
 
@@ -125,7 +127,7 @@ def _merge_close_peaks(peak_indices, signal, fs):
     if mean_ibi_sec is None:
         return peak_indices
 
-    min_gap_sec = max(REFRACTORY_MIN_SEC, REFRACTORY_IBI_FRAC * mean_ibi_sec)
+    min_gap_sec = max(REFRACTORY_MIN_SEC, DIASTOLIC_MERGE_FRAC * mean_ibi_sec)
     min_gap_samples = max(1, int(min_gap_sec * fs))
 
     kept = [int(peak_indices[0])]
@@ -139,38 +141,89 @@ def _merge_close_peaks(peak_indices, signal, fs):
     return np.array(kept, dtype=int)
 
 
-def _filter_peaks_by_amplitude(peak_indices, signal, min_frac=PEAK_HEIGHT_MEDIAN_FRAC):
+def _local_prominence(signal, idx, width=None):
+    signal = np.asarray(signal)
+    idx = int(idx)
+    if width is None:
+        width = max(3, len(signal) // 20)
+    lo = max(0, idx - width)
+    hi = min(len(signal), idx + width + 1)
+    left_min = float(np.min(signal[lo:idx + 1])) if idx > lo else float(signal[idx])
+    right_min = float(np.min(signal[idx:hi])) if hi > idx + 1 else float(signal[idx])
+    return float(signal[idx] - max(left_min, right_min))
+
+
+def _filter_peaks_adaptive_amplitude(peak_indices, signal, fs, mean_ibi_sec):
+    """
+    Drop same-beat secondary bumps and noise spikes using local amplitude context.
+    Keeps real beats that dip below a global median (e.g. after a tall spike).
+    """
     if len(peak_indices) == 0:
         return peak_indices
 
-    peak_indices = np.asarray(peak_indices, dtype=int)
+    peak_indices = np.sort(np.asarray(peak_indices, dtype=int))
+    signal = np.asarray(signal)
+    if mean_ibi_sec is None or mean_ibi_sec <= 0:
+        mean_ibi_sec = 0.8
+
+    diastolic_gap = max(int(REFRACTORY_MIN_SEC * fs), int(DIASTOLIC_MERGE_FRAC * mean_ibi_sec * fs))
+    neighbor_span = max(int(fs), int(3 * mean_ibi_sec * fs))
     heights = signal[peak_indices]
-    threshold = min_frac * float(np.median(heights))
-    return peak_indices[heights >= threshold]
+
+    kept = []
+    for i, idx in enumerate(peak_indices):
+        height = float(heights[i])
+        nearby = [
+            float(heights[j])
+            for j, other in enumerate(peak_indices)
+            if abs(int(other) - int(idx)) <= neighbor_span
+        ]
+        local_ref = float(np.median(nearby)) if nearby else height
+
+        if kept and idx - kept[-1] < diastolic_gap:
+            if height > float(signal[kept[-1]]):
+                kept[-1] = int(idx)
+            continue
+
+        if height >= PEAK_LOCAL_HEIGHT_FRAC * local_ref:
+            kept.append(int(idx))
+
+    return np.array(kept, dtype=int)
 
 
-def _keep_tallest_in_beat_windows(peak_indices, signal, fs, mean_ibi_sec):
-    """Keep only the tallest peak within each expected beat window."""
-    if len(peak_indices) <= 1:
+def _fill_missed_beats(peak_indices, signal, fs, mean_ibi_sec):
+    """Insert peaks in gaps wider than ~1.35× IBI where a local maximum exists."""
+    if len(peak_indices) < 2 or mean_ibi_sec is None or mean_ibi_sec <= 0:
         return peak_indices
 
     peak_indices = np.sort(np.asarray(peak_indices, dtype=int))
-    window_samples = max(1, int(0.85 * mean_ibi_sec * fs))
+    signal = np.asarray(signal)
+    ibi_samples = mean_ibi_sec * fs
+    min_gap_samples = int(1.35 * ibi_samples)
+    search_half = max(1, int(0.22 * ibi_samples))
+    fill_prominence = MIN_PEAK_PROMINENCE * PEAK_FILL_PROMINENCE_FRAC
 
-    kept = []
-    window_start = int(peak_indices[0])
-    best = int(peak_indices[0])
-    for idx in peak_indices[1:]:
-        idx = int(idx)
-        if idx - window_start < window_samples:
-            if signal[idx] > signal[best]:
-                best = idx
-        else:
-            kept.append(best)
-            window_start = idx
-            best = idx
-    kept.append(best)
-    return np.array(kept, dtype=int)
+    filled = [int(peak_indices[0])]
+    for i in range(len(peak_indices) - 1):
+        start = int(peak_indices[i])
+        end = int(peak_indices[i + 1])
+        gap = end - start
+
+        if gap >= min_gap_samples:
+            n_slots = int(round(gap / ibi_samples))
+            for j in range(1, n_slots):
+                expected = start + int(j * ibi_samples)
+                lo = max(start + 1, expected - search_half)
+                hi = min(end - 1, expected + search_half)
+                if hi <= lo:
+                    continue
+                local_max = lo + int(np.argmax(signal[lo:hi + 1]))
+                if _local_prominence(signal, local_max) >= fill_prominence:
+                    filled.append(local_max)
+
+        filled.append(end)
+
+    return np.unique(filled).astype(int)
 
 
 def find_peaks(signal, fs):
@@ -183,11 +236,15 @@ def find_peaks(signal, fs):
         prominence=MIN_PEAK_PROMINENCE,
     )
     peaks = _merge_close_peaks(peaks, signal, fs)
-    peaks = _filter_peaks_by_amplitude(peaks, signal)
-    if len(peaks) >= 2:
-        mean_ibi_sec = _estimate_mean_ibi_sec(peaks, signal, fs)
-        if mean_ibi_sec is not None:
-            peaks = _keep_tallest_in_beat_windows(peaks, signal, fs, mean_ibi_sec)
+
+    mean_ibi_sec = _estimate_mean_ibi_sec(peaks, signal, fs)
+    if mean_ibi_sec is not None and len(peaks) >= 2:
+        peaks = _fill_missed_beats(peaks, signal, fs, mean_ibi_sec)
+        peaks = _merge_close_peaks(peaks, signal, fs)
+        peaks = _filter_peaks_adaptive_amplitude(peaks, signal, fs, mean_ibi_sec)
+    elif len(peaks) >= 1:
+        peaks = _filter_peaks_adaptive_amplitude(peaks, signal, fs, mean_ibi_sec)
+
     return (peaks / fs).tolist()
 
 
