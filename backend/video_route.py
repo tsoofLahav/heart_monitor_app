@@ -18,6 +18,7 @@ from filter_and_peaks import (
     stable_signal_duration_sec,
     SIGNAL_START_OFFSET_SEC,
     MIN_STABLE_SIGNAL_SEC,
+    BAD_SIGNAL_DETECTION_ENABLED,
 )
 from session_timing import parse_recording_started_at, build_peak_window_metadata
 
@@ -57,12 +58,18 @@ def setup_video_route(app):
             stable_duration = stable_signal_duration_sec(clean_signal, fps)
             if stable_duration < MIN_STABLE_SIGNAL_SEC:
                 logging.info('not_reading: stable_signal_too_short')
-                return jsonify({'not_reading': True}), 200
+                if BAD_SIGNAL_DETECTION_ENABLED:
+                    return jsonify({'not_reading': True}), 200
 
             signal_ok, fail_reason = validate_signal_quality(clean_signal, fps)
             if not signal_ok:
-                logging.info('not_reading: %s', fail_reason)
-                return jsonify({'not_reading': True}), 200
+                logging.info(
+                    'not_reading: %s%s',
+                    fail_reason,
+                    '' if BAD_SIGNAL_DETECTION_ENABLED else ' (detection disabled)',
+                )
+                if BAD_SIGNAL_DETECTION_ENABLED:
+                    return jsonify({'not_reading': True}), 200
 
             peaks_local = find_peaks(clean_signal, fps)
             peaks_video = peaks_local_to_video(peaks_local)
@@ -85,8 +92,13 @@ def setup_video_route(app):
                 fs=fps,
             )
             if not peaks_ok:
-                logging.info('not_reading: %s', fail_reason)
-                return jsonify({'not_reading': True}), 200
+                logging.info(
+                    'not_reading: %s%s',
+                    fail_reason,
+                    '' if BAD_SIGNAL_DETECTION_ENABLED else ' (detection disabled)',
+                )
+                if BAD_SIGNAL_DETECTION_ENABLED:
+                    return jsonify({'not_reading': True}), 200
 
             window_lo_local, window_hi_local = peak_detection_window_local(duration)
             fake_peaks = build_fake_peaks(real_peaks, window_lo_local, window_hi_local)
