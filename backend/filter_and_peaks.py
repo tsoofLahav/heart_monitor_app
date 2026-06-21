@@ -4,8 +4,8 @@ import numpy as np
 from scipy.signal import butter, sosfiltfilt, find_peaks as scipy_find_peaks
 
 EDGE_GAP_SEC = 0.5
-RAW_WARMUP_SEC = 0.5
-POST_FILTER_TRIM_SEC = 1.5
+RAW_WARMUP_SEC = 0.0
+POST_FILTER_TRIM_SEC = 3.0
 SIGNAL_START_OFFSET_SEC = RAW_WARMUP_SEC + POST_FILTER_TRIM_SEC
 MIN_STABLE_SIGNAL_SEC = 5.0
 # Set True to reject unreadable PPG sessions via validate_* checks in video_route.
@@ -28,7 +28,7 @@ MAX_PEAK_AMPLITUDE_CV = 0.42
 MAX_BEAT_COUNT_FACTOR = 1.10
 
 
-def butter_bandpass_filter(signal, fs, lowcut=0.8, highcut=3.0, order=6):
+def butter_bandpass_filter(signal, fs, lowcut=0.8, highcut=3.0, order=4):
     """Applies a band-pass filter using second-order sections (SOS) for stability."""
     nyq = 0.5 * fs
     low, high = lowcut / nyq, highcut / nyq
@@ -69,7 +69,7 @@ def _trim_start(signal, trim_sec, fs):
 
 def denoise_ppg(raw_signal, fs):
     """
-    Trim warm-up, bandpass, trim filter transients, normalize on stable segment.
+    Bandpass, trim filter transients, normalize on stable segment.
     Returns (normalized_signal, filtered_signal).
     """
     raw_signal = np.array(raw_signal)
