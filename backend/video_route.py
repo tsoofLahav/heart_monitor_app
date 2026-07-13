@@ -21,6 +21,7 @@ from filter_and_peaks import (
     BAD_SIGNAL_DETECTION_ENABLED,
 )
 from session_timing import parse_recording_started_at, build_peak_window_metadata
+from ppg_quality.classifier import classify_signal_windows
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s", force=True)
 
@@ -104,6 +105,13 @@ def setup_video_route(app):
             fake_peaks = build_fake_peaks(real_peaks, window_lo_local, window_hi_local)
             signal = [float(x) for x in clean_signal]
 
+            ml_quality = classify_signal_windows(
+                signal=clean_signal,
+                peaks_local=real_peaks,
+                fs=fps,
+                duration_sec=stable_duration,
+            )
+
             return jsonify({
                 'signal': signal,
                 'signal_start_sec': SIGNAL_START_OFFSET_SEC,
@@ -121,6 +129,10 @@ def setup_video_route(app):
                     else {}
                 ),
                 'quality': quality,
+                'quality_label': ml_quality['quality_label'],
+                'quality_prob_good': ml_quality['quality_prob_good'],
+                'quality_prob_bad': ml_quality['quality_prob_bad'],
+                'quality_windows': ml_quality['quality_windows'],
             }), 200
 
         except Exception as e:
