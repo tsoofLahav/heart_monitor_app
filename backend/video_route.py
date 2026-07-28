@@ -1,5 +1,6 @@
-import os
 import logging
+import os
+import tempfile
 
 from flask import Flask, request, jsonify
 
@@ -29,7 +30,7 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(mes
 def setup_video_route(app):
     @app.route('/process_video', methods=['POST'])
     def process_video():
-        video_path = './temp_video.mp4'
+        video_path = None
         try:
             file = request.files.get('video')
             if not file:
@@ -39,6 +40,8 @@ def setup_video_route(app):
                 request.form.get('recording_started_at')
             )
 
+            with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
+                video_path = tmp.name
             file.save(video_path)
             if not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
                 raise Exception('Invalid video file.')
@@ -139,7 +142,7 @@ def setup_video_route(app):
             logging.exception('Unhandled exception:')
             return jsonify({'server_error': True, 'error': str(e)}), 500
         finally:
-            if os.path.exists(video_path):
+            if video_path and os.path.exists(video_path):
                 try:
                     os.remove(video_path)
                 except OSError:
