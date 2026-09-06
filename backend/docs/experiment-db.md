@@ -5,13 +5,21 @@ session reads and writes go through HTTPS routes under `/data/*` on this App Ser
 
 ## Schema
 
-Run [`sql/001_experiment_schema.sql`](../sql/001_experiment_schema.sql) against the
-Azure SQL database (Query editor, SSMS, or `sqlcmd`).
+Your live DB already has `Participants`, `Trials`, `Assessments`, `Sessions`.
 
-Tables: `Participants`, `Trials`, `Assessments`, `Sessions`.
+**Required one-time fix** if bootstrap logs `Invalid column name 'ClientInstallId'`:
+run [`sql/002_add_client_install_id.sql`](../sql/002_add_client_install_id.sql) in Azure Query editor.
+
+Fresh databases can instead run [`sql/001_experiment_schema.sql`](../sql/001_experiment_schema.sql).
+
+`Participants` must include **`ClientInstallId`** (unique) — the app identity key.
 
 `Participants.Condition` (`real` | `control`) is assigned only on the server and
 **must never** be returned to the client.
+
+Compatible live nuances (no code change needed):
+- `Sessions.DurationSeconds` as `int` is fine
+- `Assessments.Phase` as `nvarchar(10)` is fine
 
 ## App Service configuration
 
@@ -41,6 +49,11 @@ The App Service Python runtime must have **ODBC Driver 18 for SQL Server** insta
 | POST | `/data/sessions` | `{ client_install_id, trial_id, session_number, score, ... }` |
 | PATCH | `/data/participants/me` | `{ client_install_id, name?, age? }` |
 
-Progress JSON never includes `condition`.
+Progress JSON never includes `condition`. It includes neutral `training_mode`:
+
+- `"ppg"` when Condition is `real` (finger PPG training sessions)
+- `"audio"` when Condition is `control` (external beep-counting sessions)
+
+Prep, PRE, and POST are identical for both arms; only training sessions (trail 2–9) differ.
 
 Trail steps: `1` = PRE, `2–9` = sessions 1–8, `10` = POST.

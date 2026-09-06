@@ -57,6 +57,13 @@ def _compute_trail_step(
     return 10  # completed; client uses status
 
 
+def _training_mode_from_condition(condition: str | None) -> str:
+    """Neutral client field: never expose real/control wording."""
+    if (condition or "").strip().lower() == "control":
+        return "audio"
+    return "ppg"
+
+
 def _progress_payload(
     *,
     participant_code: str,
@@ -66,6 +73,7 @@ def _progress_payload(
     has_pre: bool,
     has_post: bool,
     completed_sessions: list[int],
+    condition: str | None = None,
 ) -> dict[str, Any]:
     trail_step = _compute_trail_step(has_pre, has_post, completed_sessions)
     return {
@@ -77,6 +85,7 @@ def _progress_payload(
         "completed_session_numbers": sorted(completed_sessions),
         "has_pre_assessment": has_pre,
         "has_post_assessment": has_post,
+        "training_mode": _training_mode_from_condition(condition),
         # Condition intentionally omitted
     }
 
@@ -84,7 +93,7 @@ def _progress_payload(
 def _load_progress(cursor, participant_id: int) -> dict[str, Any] | None:
     cursor.execute(
         """
-        SELECT Id, ParticipantCode
+        SELECT Id, ParticipantCode, Condition
         FROM Participants
         WHERE Id = ?
         """,
@@ -132,6 +141,7 @@ def _load_progress(cursor, participant_id: int) -> dict[str, Any] | None:
         has_pre="pre" in phases,
         has_post="post" in phases,
         completed_sessions=completed,
+        condition=str(participant.get("Condition") or ""),
     )
 
 
@@ -182,10 +192,12 @@ def bootstrap_participant(client_install_id: str) -> dict[str, Any]:
         )
         trial_id = int(cursor.fetchone()[0])
         cursor.execute(
-            "SELECT ParticipantCode FROM Participants WHERE Id = ?",
+            "SELECT ParticipantCode, Condition FROM Participants WHERE Id = ?",
             participant_id,
         )
-        code = str(cursor.fetchone()[0])
+        row = cursor.fetchone()
+        code = str(row[0])
+        condition = str(row[1] or "")
         return _progress_payload(
             participant_code=code,
             trial_id=trial_id,
@@ -194,6 +206,7 @@ def bootstrap_participant(client_install_id: str) -> dict[str, Any]:
             has_pre=False,
             has_post=False,
             completed_sessions=[],
+            condition=condition,
         )
 
 
