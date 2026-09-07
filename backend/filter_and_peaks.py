@@ -353,6 +353,7 @@ def compute_quality_metrics(
         'peaks_count': len(peaks),
         'mean_hr_bpm': None,
         'ibi_cv': None,
+        'rmssd': None,
     }
     if len(peaks) >= 2:
         ibis = np.diff(peaks)
@@ -360,6 +361,12 @@ def compute_quality_metrics(
         if mean_ibi > 0:
             metrics['mean_hr_bpm'] = round(60.0 / mean_ibi, 2)
             metrics['ibi_cv'] = round(float(np.std(ibis) / mean_ibi), 4)
+        if len(ibis) >= 2:
+            # RMSSD in milliseconds (standard HRV unit).
+            ibis_ms = ibis * 1000.0
+            metrics['rmssd'] = round(
+                float(np.sqrt(np.mean(np.diff(ibis_ms) ** 2))), 4
+            )
     return metrics
 
 

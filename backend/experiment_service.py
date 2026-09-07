@@ -429,6 +429,11 @@ def save_assessment(
     phase: str,
     heartbeat_score: float | None,
     questionnaire_score: float | None,
+    relax_mean_hr_bpm: float | None = None,
+    relax_hrv_rmssd: float | None = None,
+    relax_ibi_cv: float | None = None,
+    relax_duration_seconds: float | None = None,
+    relax_peaks_count: int | None = None,
 ) -> dict[str, Any]:
     phase = (phase or "").strip().lower()
     if phase not in {"pre", "post"}:
@@ -444,19 +449,40 @@ def save_assessment(
             USING (SELECT ? AS TrialId, ? AS Phase) AS source
             ON target.TrialId = source.TrialId AND target.Phase = source.Phase
             WHEN MATCHED THEN
-                UPDATE SET HeartbeatScore = ?, QuestionnaireScore = ?
+                UPDATE SET
+                    HeartbeatScore = ?,
+                    QuestionnaireScore = ?,
+                    RelaxMeanHrBpm = ?,
+                    RelaxHrvRmssd = ?,
+                    RelaxIbiCv = ?,
+                    RelaxDurationSeconds = ?,
+                    RelaxPeaksCount = ?
             WHEN NOT MATCHED THEN
-                INSERT (TrialId, Phase, HeartbeatScore, QuestionnaireScore)
-                VALUES (?, ?, ?, ?);
+                INSERT (
+                    TrialId, Phase, HeartbeatScore, QuestionnaireScore,
+                    RelaxMeanHrBpm, RelaxHrvRmssd, RelaxIbiCv,
+                    RelaxDurationSeconds, RelaxPeaksCount
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
             """,
             trial_id,
             phase,
             heartbeat_score,
             questionnaire_score,
+            relax_mean_hr_bpm,
+            relax_hrv_rmssd,
+            relax_ibi_cv,
+            relax_duration_seconds,
+            relax_peaks_count,
             trial_id,
             phase,
             heartbeat_score,
             questionnaire_score,
+            relax_mean_hr_bpm,
+            relax_hrv_rmssd,
+            relax_ibi_cv,
+            relax_duration_seconds,
+            relax_peaks_count,
         )
 
         if phase == "pre":

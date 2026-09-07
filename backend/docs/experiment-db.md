@@ -45,7 +45,7 @@ The App Service Python runtime must have **ODBC Driver 18 for SQL Server** insta
 |--------|------|----------------|
 | POST | `/data/bootstrap` | `{ "client_install_id": "<uuid>" }` |
 | GET | `/data/progress?client_install_id=<uuid>` | — |
-| POST | `/data/assessments` | `{ client_install_id, trial_id, phase, heartbeat_score?, questionnaire_score? }` |
+| POST | `/data/assessments` | `{ client_install_id, trial_id, phase, heartbeat_score?, questionnaire_score?, relax_mean_hr_bpm?, relax_hrv_rmssd?, relax_ibi_cv?, relax_duration_seconds?, relax_peaks_count? }` |
 | POST | `/data/sessions` | `{ client_install_id, trial_id, session_number, score, ... }` |
 | PATCH | `/data/participants/me` | `{ client_install_id, first_name?, last_name?, phone?, name?, age? }` |
 | POST | `/data/appreciations` | `{ client_install_id, trial_id, phase: before\|after, answers }` |
@@ -53,6 +53,9 @@ The App Service Python runtime must have **ODBC Driver 18 for SQL Server** insta
 
 Prep migrations: [`sql/003_prep_profile_appreciations_schedules.sql`](../sql/003_prep_profile_appreciations_schedules.sql)
 (adds `FirstName`/`LastName`/`Phone`, `Appreciations`, `SessionSchedules`).
+
+Assessment relax vitals: [`sql/004_assessment_relax_vitals.sql`](../sql/004_assessment_relax_vitals.sql)
+(adds `RelaxMeanHrBpm`, `RelaxHrvRmssd`, `RelaxIbiCv`, `RelaxDurationSeconds`, `RelaxPeaksCount`).
 
 Session schedule times are stored as UTC plus Israel wall-clock (`Asia/Jerusalem`).
 

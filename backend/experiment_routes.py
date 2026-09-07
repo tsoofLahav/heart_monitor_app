@@ -99,6 +99,31 @@ def assessments():
             phase=phase,
             heartbeat_score=float(heartbeat) if heartbeat is not None else None,
             questionnaire_score=float(questionnaire) if questionnaire is not None else None,
+            relax_mean_hr_bpm=(
+                float(data["relax_mean_hr_bpm"])
+                if data.get("relax_mean_hr_bpm") is not None
+                else None
+            ),
+            relax_hrv_rmssd=(
+                float(data["relax_hrv_rmssd"])
+                if data.get("relax_hrv_rmssd") is not None
+                else None
+            ),
+            relax_ibi_cv=(
+                float(data["relax_ibi_cv"])
+                if data.get("relax_ibi_cv") is not None
+                else None
+            ),
+            relax_duration_seconds=(
+                float(data["relax_duration_seconds"])
+                if data.get("relax_duration_seconds") is not None
+                else None
+            ),
+            relax_peaks_count=(
+                int(data["relax_peaks_count"])
+                if data.get("relax_peaks_count") is not None
+                else None
+            ),
         )
         return jsonify(progress), 200
     except KeyError:
