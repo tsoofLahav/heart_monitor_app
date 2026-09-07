@@ -47,7 +47,14 @@ The App Service Python runtime must have **ODBC Driver 18 for SQL Server** insta
 | GET | `/data/progress?client_install_id=<uuid>` | — |
 | POST | `/data/assessments` | `{ client_install_id, trial_id, phase, heartbeat_score?, questionnaire_score? }` |
 | POST | `/data/sessions` | `{ client_install_id, trial_id, session_number, score, ... }` |
-| PATCH | `/data/participants/me` | `{ client_install_id, name?, age? }` |
+| PATCH | `/data/participants/me` | `{ client_install_id, first_name?, last_name?, phone?, name?, age? }` |
+| POST | `/data/appreciations` | `{ client_install_id, trial_id, phase: before\|after, answers }` |
+| PUT | `/data/session-schedule` | `{ client_install_id, trial_id, slots: [{ trail_step, scheduled_at_utc, local_wall_time, duration_minutes }] }` |
+
+Prep migrations: [`sql/003_prep_profile_appreciations_schedules.sql`](../sql/003_prep_profile_appreciations_schedules.sql)
+(adds `FirstName`/`LastName`/`Phone`, `Appreciations`, `SessionSchedules`).
+
+Session schedule times are stored as UTC plus Israel wall-clock (`Asia/Jerusalem`).
 
 Progress JSON never includes `condition`. It includes neutral `training_mode`:
 

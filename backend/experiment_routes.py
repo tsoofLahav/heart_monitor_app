@@ -11,6 +11,8 @@ from db import is_db_configured
 from experiment_service import (
     bootstrap_participant,
     get_progress,
+    replace_session_schedule,
+    save_appreciation,
     save_assessment,
     save_session,
     update_participant_profile,
@@ -162,6 +164,9 @@ def patch_participant():
         progress = update_participant_profile(
             client_id,
             name=data.get("name"),
+            first_name=data.get("first_name"),
+            last_name=data.get("last_name"),
+            phone=data.get("phone"),
             age=int(age) if age is not None else None,
         )
         return jsonify(progress), 200
@@ -172,3 +177,61 @@ def patch_participant():
     except Exception:
         logger.exception("patch participant failed")
         return jsonify({"error": "participant_update_failed"}), 500
+
+
+@experiment_bp.route("/appreciations", methods=["POST"])
+def appreciations():
+    if not is_db_configured():
+        return _db_unavailable()
+    data = request.get_json(silent=True) or {}
+    try:
+        client_id = _client_install_id_from_request()
+        trial_id = int(data["trial_id"])
+        phase = data.get("phase")
+        answers = data.get("answers")
+        if answers is None:
+            raise ValueError("answers is required")
+        progress = save_appreciation(
+            client_install_id=client_id,
+            trial_id=trial_id,
+            phase=phase,
+            answers=answers,
+        )
+        return jsonify(progress), 200
+    except KeyError:
+        return jsonify({"error": "trial_id and phase are required"}), 400
+    except (ValueError, TypeError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except Exception:
+        logger.exception("save appreciation failed")
+        return jsonify({"error": "appreciation_failed"}), 500
+
+
+@experiment_bp.route("/session-schedule", methods=["PUT"])
+def session_schedule():
+    if not is_db_configured():
+        return _db_unavailable()
+    data = request.get_json(silent=True) or {}
+    try:
+        client_id = _client_install_id_from_request()
+        trial_id = int(data["trial_id"])
+        slots = data.get("slots")
+        if not isinstance(slots, list):
+            raise ValueError("slots must be a list of 10 items")
+        progress = replace_session_schedule(
+            client_install_id=client_id,
+            trial_id=trial_id,
+            slots=slots,
+        )
+        return jsonify(progress), 200
+    except KeyError:
+        return jsonify({"error": "trial_id and slots are required"}), 400
+    except (ValueError, TypeError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except Exception:
+        logger.exception("save session schedule failed")
+        return jsonify({"error": "session_schedule_failed"}), 500

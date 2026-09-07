@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import random
 from datetime import datetime, timezone
@@ -231,6 +232,9 @@ def update_participant_profile(
     client_install_id: str,
     *,
     name: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    phone: str | None = None,
     age: int | None = None,
 ) -> dict[str, Any]:
     client_install_id = (client_install_id or "").strip()
@@ -248,17 +252,169 @@ def update_participant_profile(
             raise LookupError("participant not found")
         participant_id = int(row[0])
 
-        if name is not None:
+        fn = first_name.strip() if isinstance(first_name, str) else None
+        ln = last_name.strip() if isinstance(last_name, str) else None
+        if first_name is not None:
+            cursor.execute(
+                "UPDATE Participants SET FirstName = ? WHERE Id = ?",
+                fn or None,
+                participant_id,
+            )
+        if last_name is not None:
+            cursor.execute(
+                "UPDATE Participants SET LastName = ? WHERE Id = ?",
+                ln or None,
+                participant_id,
+            )
+        if phone is not None:
+            cursor.execute(
+                "UPDATE Participants SET Phone = ? WHERE Id = ?",
+                phone.strip() or None,
+                participant_id,
+            )
+
+        # Keep legacy Name in sync when first/last provided, else honor name.
+        if first_name is not None or last_name is not None:
+            cursor.execute(
+                "SELECT FirstName, LastName FROM Participants WHERE Id = ?",
+                participant_id,
+            )
+            names = cursor.fetchone()
+            combined = " ".join(
+                part for part in [(names[0] or "").strip(), (names[1] or "").strip()] if part
+            )
+            cursor.execute(
+                "UPDATE Participants SET Name = ? WHERE Id = ?",
+                combined or None,
+                participant_id,
+            )
+        elif name is not None:
             cursor.execute(
                 "UPDATE Participants SET Name = ? WHERE Id = ?",
                 name.strip() or None,
                 participant_id,
             )
+
         if age is not None:
             cursor.execute(
                 "UPDATE Participants SET Age = ? WHERE Id = ?",
                 age,
                 participant_id,
+            )
+        progress = _load_progress(cursor, participant_id)
+        if not progress:
+            raise LookupError("trial not found")
+        return progress
+
+
+def save_appreciation(
+    *,
+    client_install_id: str,
+    trial_id: int,
+    phase: str,
+    answers: list[Any] | dict[str, Any],
+) -> dict[str, Any]:
+    phase = (phase or "").strip().lower()
+    if phase not in {"before", "after"}:
+        raise ValueError("phase must be 'before' or 'after'")
+    answers_json = json.dumps(answers, ensure_ascii=False)
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        participant_id = _assert_trial_owned(cursor, client_install_id, trial_id)
+        now = _utcnow()
+        cursor.execute(
+            """
+            MERGE Appreciations AS target
+            USING (SELECT ? AS TrialId, ? AS Phase) AS source
+            ON target.TrialId = source.TrialId AND target.Phase = source.Phase
+            WHEN MATCHED THEN
+                UPDATE SET AnswersJson = ?, UpdatedAt = ?
+            WHEN NOT MATCHED THEN
+                INSERT (TrialId, Phase, AnswersJson, CreatedAt, UpdatedAt)
+                VALUES (?, ?, ?, ?, ?);
+            """,
+            trial_id,
+            phase,
+            answers_json,
+            now,
+            trial_id,
+            phase,
+            answers_json,
+            now,
+            now,
+        )
+        progress = _load_progress(cursor, participant_id)
+        if not progress:
+            raise LookupError("trial not found")
+        return progress
+
+
+def replace_session_schedule(
+    *,
+    client_install_id: str,
+    trial_id: int,
+    slots: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if len(slots) != 10:
+        raise ValueError("exactly 10 schedule slots are required")
+
+    normalized: list[tuple[int, datetime, str, int, str]] = []
+    seen_steps: set[int] = set()
+    for raw in slots:
+        trail_step = int(raw["trail_step"])
+        if trail_step < 1 or trail_step > 10:
+            raise ValueError("trail_step must be 1..10")
+        if trail_step in seen_steps:
+            raise ValueError(f"duplicate trail_step {trail_step}")
+        seen_steps.add(trail_step)
+
+        duration = int(raw.get("duration_minutes") or (7 if trail_step in (1, 10) else 2))
+        if duration not in (2, 7):
+            raise ValueError("duration_minutes must be 2 or 7")
+        if trail_step in (1, 10) and duration != 7:
+            raise ValueError("trail steps 1 and 10 must be 7 minutes")
+        if trail_step not in (1, 10) and duration != 2:
+            raise ValueError("trail steps 2-9 must be 2 minutes")
+
+        local_wall = str(raw.get("local_wall_time") or "").strip()
+        if not local_wall:
+            raise ValueError("local_wall_time is required (YYYY-MM-DDTHH:mm)")
+        tz_id = str(raw.get("timezone_id") or "Asia/Jerusalem").strip() or "Asia/Jerusalem"
+
+        scheduled_raw = raw.get("scheduled_at_utc")
+        if isinstance(scheduled_raw, datetime):
+            scheduled_at = scheduled_raw.replace(tzinfo=None) if scheduled_raw.tzinfo else scheduled_raw
+        else:
+            text = str(scheduled_raw or "").strip().replace("Z", "+00:00")
+            try:
+                dt = datetime.fromisoformat(text)
+            except ValueError as exc:
+                raise ValueError(f"invalid scheduled_at_utc: {scheduled_raw}") from exc
+            scheduled_at = dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+        normalized.append((trail_step, scheduled_at, local_wall, duration, tz_id))
+
+    if seen_steps != set(range(1, 11)):
+        raise ValueError("schedule must include trail steps 1 through 10")
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        participant_id = _assert_trial_owned(cursor, client_install_id, trial_id)
+        cursor.execute("DELETE FROM SessionSchedules WHERE TrialId = ?", trial_id)
+        for trail_step, scheduled_at, local_wall, duration, tz_id in normalized:
+            cursor.execute(
+                """
+                INSERT INTO SessionSchedules
+                    (TrialId, TrailStep, ScheduledAtUtc, LocalWallTime, DurationMinutes, TimeZoneId)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                trial_id,
+                trail_step,
+                scheduled_at,
+                local_wall,
+                duration,
+                tz_id,
             )
         progress = _load_progress(cursor, participant_id)
         if not progress:
