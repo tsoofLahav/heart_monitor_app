@@ -8,12 +8,10 @@ from video_edit import process_video_frames, get_video_duration_seconds
 from filter_and_peaks import (
     denoise_ppg,
     find_peaks,
-    filter_peaks_to_window,
     compute_quality_metrics,
     build_fake_peaks,
     peaks_local_to_video,
     peaks_video_to_local,
-    peak_detection_window_local,
     stable_signal_duration_sec,
     SIGNAL_START_OFFSET_SEC,
 )
@@ -50,13 +48,22 @@ def setup_video_route(app):
                 raise Exception('No frames were processed.')
 
             duration = float(processed_duration)
-            peak_window = build_peak_window_metadata(duration, recording_started_at)
+            try:
+                peak_window = build_peak_window_metadata(
+                    duration, recording_started_at,
+                    request.form.get('counting_start_sec'),
+                    request.form.get('counting_end_sec'),
+                )
+            except ValueError as exc:
+                return jsonify({'error': str(exc)}), 400
+            window_lo = peak_window['peak_window_start_sec']
+            window_hi = peak_window['peak_window_end_sec']
 
             clean_signal, _filtered_signal = denoise_ppg(intensities, fps)
             stable_duration = stable_signal_duration_sec(clean_signal, fps)
             peaks_local = find_peaks(clean_signal, fps)
             peaks_video = peaks_local_to_video(peaks_local)
-            real_peaks_video = filter_peaks_to_window(peaks_video, duration)
+            real_peaks_video = [p for p in peaks_video if window_lo <= p <= window_hi]
             real_peaks = peaks_video_to_local(real_peaks_video)
 
             quality = compute_quality_metrics(
@@ -68,15 +75,28 @@ def setup_video_route(app):
                 stable_duration_sec=stable_duration,
             )
 
-            window_lo_local, window_hi_local = peak_detection_window_local(duration)
+            window_lo_local = window_lo - SIGNAL_START_OFFSET_SEC
+            window_hi_local = window_hi - SIGNAL_START_OFFSET_SEC
             fake_peaks = build_fake_peaks(real_peaks, window_lo_local, window_hi_local)
             signal = [float(x) for x in clean_signal]
 
+            # New clients classify the interval the participant actually counted.
+            # Keep the returned signal on its existing trimmed-video timeline.
+            has_cues = request.form.get('counting_start_sec') is not None
+            if has_cues:
+                quality['duration_sec'] = round(window_hi - window_lo, 3)
+                first = max(0, int(round(window_lo_local * fps)))
+                last = min(len(clean_signal), int(round(window_hi_local * fps)))
+                ml_signal = clean_signal[first:last]
+                ml_peaks = [p - window_lo_local for p in real_peaks]
+                ml_duration = window_hi - window_lo
+            else:
+                ml_signal, ml_peaks, ml_duration = clean_signal, real_peaks, stable_duration
             ml_quality = classify_signal_windows(
-                signal=clean_signal,
-                peaks_local=real_peaks,
+                signal=ml_signal,
+                peaks_local=ml_peaks,
                 fs=fps,
-                duration_sec=stable_duration,
+                duration_sec=ml_duration,
             )
 
             return jsonify({
@@ -100,6 +120,9 @@ def setup_video_route(app):
                 'quality_prob_good': ml_quality['quality_prob_good'],
                 'quality_prob_bad': ml_quality['quality_prob_bad'],
                 'quality_windows': ml_quality['quality_windows'],
+                'quality_window_origin_sec': window_lo if has_cues else SIGNAL_START_OFFSET_SEC,
+                'quality_bad_windows': ml_quality['quality_bad_windows'],
+                'quality_allowed_bad_windows': ml_quality['quality_allowed_bad_windows'],
             }), 200
 
         except Exception as e:

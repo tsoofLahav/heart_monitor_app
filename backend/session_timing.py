@@ -1,6 +1,8 @@
+import math
+
 from datetime import datetime, timedelta, timezone
 
-from filter_and_peaks import EDGE_GAP_SEC, peak_detection_window
+from filter_and_peaks import SIGNAL_START_OFFSET_SEC, peak_detection_window
 
 
 def parse_recording_started_at(value):
@@ -14,12 +16,23 @@ def parse_recording_started_at(value):
     return dt.astimezone(timezone.utc)
 
 
-def build_peak_window_metadata(duration_sec, recording_started_at=None):
+def build_peak_window_metadata(duration_sec, recording_started_at=None,
+                               counting_start_sec=None, counting_end_sec=None):
     """
-    Peak search window: recording start + edge gap through duration - edge gap.
+    Use client cue boundaries when supplied; otherwise use the legacy window.
     Returns seconds relative to video start and optional UTC bounds.
     """
-    start_sec, end_sec = peak_detection_window(duration_sec)
+    if counting_start_sec is None and counting_end_sec is None:
+        start_sec, end_sec = peak_detection_window(duration_sec)
+    else:
+        try:
+            start_sec = float(counting_start_sec)
+            end_sec = float(counting_end_sec)
+        except (TypeError, ValueError) as exc:
+            raise ValueError('Both counting cue offsets must be numeric') from exc
+        if not (math.isfinite(start_sec) and math.isfinite(end_sec)
+                and SIGNAL_START_OFFSET_SEC <= start_sec < end_sec <= float(duration_sec)):
+            raise ValueError('Counting cue interval is outside the usable video')
     meta = {
         'peak_window_start_sec': round(start_sec, 3),
         'peak_window_end_sec': round(end_sec, 3),

@@ -46,6 +46,7 @@ class VideoRouteTests(unittest.TestCase):
         self.ml.classify_signal_windows = Mock(return_value={
             'quality_label': 'bad', 'quality_prob_good': 0.1,
             'quality_prob_bad': 0.9, 'quality_windows': [{'label': 'bad'}],
+            'quality_bad_windows': 1, 'quality_allowed_bad_windows': 0,
         })
         spec = importlib.util.spec_from_file_location(
             'video_route_under_test', Path(__file__).resolve().parents[1] / 'video_route.py')
@@ -59,10 +60,11 @@ class VideoRouteTests(unittest.TestCase):
         module.setup_video_route(app)
         self.client = app.test_client()
 
-    def upload(self):
+    def upload(self, **fields):
         return self.client.post('/process_video', data={
             'video': (io.BytesIO(b'video fixture'), 'clip.mp4'),
             'recording_started_at': '2026-09-08T10:00:00Z',
+            **fields,
         })
 
     def test_ml_bad_label_preserves_signal_response_and_cleans_upload(self):
@@ -77,6 +79,25 @@ class VideoRouteTests(unittest.TestCase):
         self.assertEqual(data['signal_end_sec'], 13.0)
         self.assertNotIn('not_reading', data)
         self.ml.classify_signal_windows.assert_called_once()
+        self.assertTrue(all(not Path(p).exists() for p in self.saved_paths))
+
+    def test_cues_filter_peaks_and_ml_input_to_counted_interval(self):
+        self.timing.build_peak_window_metadata.return_value = {
+            'peak_window_start_sec': 4.5, 'peak_window_end_sec': 10.5,
+        }
+        response = self.upload(counting_start_sec='4.5', counting_end_sec='10.5')
+        self.assertEqual(response.status_code, 200)
+        self.signal.peaks_video_to_local.assert_called_once_with([5.0])
+        self.assertEqual(response.get_json()['quality']['duration_sec'], 6.0)
+        args = self.ml.classify_signal_windows.call_args.kwargs
+        self.assertEqual(len(args['signal']), 180)
+        self.assertEqual(args['duration_sec'], 6.0)
+        self.assertEqual(response.get_json()['quality_window_origin_sec'], 4.5)
+
+    def test_invalid_cue_interval_is_client_error_and_cleans_upload(self):
+        self.timing.build_peak_window_metadata.side_effect = ValueError('Invalid cue interval')
+        self.assertEqual(self.upload(counting_start_sec='1').status_code, 400)
+        self.ml.classify_signal_windows.assert_not_called()
         self.assertTrue(all(not Path(p).exists() for p in self.saved_paths))
 
     def test_good_label_is_returned(self):

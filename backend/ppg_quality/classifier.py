@@ -119,7 +119,9 @@ def classify_signal_windows(
     """
     Classify stable PPG signal in 10-second windows.
 
-    Overall label is bad if ANY window is bad (conservative).
+    Allow 0 bad windows for 1–3 parts, 1 for 4–5, and 2 for 6+.
+    Probability fields retain their worst-window meaning; use quality_label
+    for acceptance, not a probability threshold on the aggregate.
     """
     bundle = _load_model_bundle()
     windows = quality_windows(duration_sec)
@@ -144,11 +146,15 @@ def classify_signal_windows(
             }
         )
 
-    any_bad = any(w["label"] == "bad" for w in window_results)
+    bad_count = sum(w["label"] == "bad" for w in window_results)
+    allowed_bad = 2 if len(window_results) >= 6 else (1 if len(window_results) >= 4 else 0)
+    rejected = not window_results or bad_count > allowed_bad
     overall_prob_good = min_prob_good if window_results else 0.0
 
     return {
-        "quality_label": "bad" if any_bad else "good",
+        "quality_label": "bad" if rejected else "good",
+        "quality_bad_windows": bad_count,
+        "quality_allowed_bad_windows": allowed_bad,
         "quality_prob_good": round(overall_prob_good, 4),
         "quality_prob_bad": round(1.0 - overall_prob_good, 4),
         "quality_windows": window_results,
