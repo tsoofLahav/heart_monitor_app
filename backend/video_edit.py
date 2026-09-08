@@ -79,8 +79,8 @@ def process_video_frames(input_path, target_duration=None):
 
     intensities = []
     for frame in frames:
-        green_channel = frame[:, :, 2]
-        roi_values = green_channel[mask]
+        red_channel = frame[:, :, 2]  # OpenCV frames are BGR.
+        roi_values = red_channel[mask]
         intensities.append(-np.mean(roi_values))
 
     return effective_fps, intensities, target_duration, frame_width, frame_height

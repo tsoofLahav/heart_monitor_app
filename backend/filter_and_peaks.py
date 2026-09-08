@@ -7,25 +7,15 @@ EDGE_GAP_SEC = 0.5
 RAW_WARMUP_SEC = 0.0
 POST_FILTER_TRIM_SEC = 3.0
 SIGNAL_START_OFFSET_SEC = RAW_WARMUP_SEC + POST_FILTER_TRIM_SEC
-MIN_STABLE_SIGNAL_SEC = 5.0
-# Set True to reject unreadable PPG sessions via validate_* checks in video_route.
-BAD_SIGNAL_DETECTION_ENABLED = False
-MIN_HR_BPM = 45.0
-MAX_HR_BPM = 150.0
-MAX_IBI_CV = 0.30
 REFRACTORY_MIN_SEC = 0.20
 REFRACTORY_IBI_FRAC = 0.30
 
 OUTLIER_MAD_SCALE = 4.0
-MAX_OUTLIER_FRAC = 0.02
-BEAT_CORRELATION_THRESHOLD = 0.32
 MIN_PEAK_PROMINENCE = 0.52
 PEAK_MIN_DISTANCE_SEC = 0.40
 PEAK_LOCAL_HEIGHT_FRAC = 0.38
 PEAK_FILL_PROMINENCE_FRAC = 0.72
 DIASTOLIC_MERGE_FRAC = 0.35
-MAX_PEAK_AMPLITUDE_CV = 0.42
-MAX_BEAT_COUNT_FACTOR = 1.10
 
 
 def butter_bandpass_filter(signal, fs, lowcut=0.8, highcut=3.0, order=4):
@@ -270,63 +260,6 @@ def filter_peaks_to_window(peaks_sec, duration_sec):
     return [p for p in peaks_sec if start_sec <= p <= end_sec]
 
 
-def _outlier_fraction(signal):
-    signal = np.asarray(signal)
-    med = np.median(signal)
-    scale = _robust_scale(signal)
-    if scale <= 1e-8:
-        return 0.0
-    return float(np.mean(np.abs(signal - med) > OUTLIER_MAD_SCALE * scale))
-
-
-def _beat_template_correlation(signal, fs):
-    """Mean pairwise correlation of beat-shaped windows around detected peaks."""
-    signal = np.asarray(signal)
-    distance = max(1, int(fs * PEAK_MIN_DISTANCE_SEC))
-    peaks, _ = scipy_find_peaks(signal, distance=distance, prominence=MIN_PEAK_PROMINENCE * 0.75)
-    if len(peaks) < 2:
-        return 0.0
-
-    beat_window = max(3, int(0.7 * fs))
-    beats = []
-    half = beat_window // 2
-    for peak in peaks:
-        start = int(peak) - half
-        end = int(peak) + half
-        if start >= 0 and end <= len(signal):
-            beats.append(signal[start:end])
-
-    if len(beats) < 2:
-        return 0.0
-
-    ref = beats[0]
-    correlations = []
-    for beat in beats[1:]:
-        if len(beat) != len(ref):
-            continue
-        corr = np.corrcoef(ref, beat)[0, 1]
-        if np.isfinite(corr):
-            correlations.append(float(corr))
-
-    return float(np.mean(correlations)) if correlations else 0.0
-
-
-def validate_signal_quality(signal, fs):
-    """Morphology-based rejection before peak counting."""
-    signal = np.asarray(signal)
-    if len(signal) < int(fs * 2):
-        return False, 'signal_too_short'
-
-    if _outlier_fraction(signal) > MAX_OUTLIER_FRAC:
-        return False, 'outlier_fraction'
-
-    correlation = _beat_template_correlation(signal, fs)
-    if correlation < BEAT_CORRELATION_THRESHOLD:
-        return False, 'beat_correlation'
-
-    return True, None
-
-
 def compute_quality_metrics(
     peaks_sec,
     video_duration_sec,
@@ -368,42 +301,6 @@ def compute_quality_metrics(
                 float(np.sqrt(np.mean(np.diff(ibis_ms) ** 2))), 4
             )
     return metrics
-
-
-def validate_peaks_quality(peaks_sec, stable_duration_sec, signal=None, fs=None):
-    """Reject artifact-heavy segments: beat count, HR, IBI regularity, peak amplitude."""
-    peaks = sorted(float(p) for p in peaks_sec)
-    if len(peaks) < 2:
-        return False, 'too_few_peaks'
-
-    ibis = np.diff(peaks)
-    mean_ibi = float(np.mean(ibis))
-    if mean_ibi <= 0:
-        return False, 'invalid_ibi'
-
-    hr_bpm = 60.0 / mean_ibi
-    if hr_bpm < MIN_HR_BPM or hr_bpm > MAX_HR_BPM:
-        return False, 'hr_out_of_range'
-
-    cv = float(np.std(ibis) / mean_ibi)
-    if cv > MAX_IBI_CV:
-        return False, 'ibi_irregular'
-
-    stable_duration_sec = float(stable_duration_sec)
-    min_beats = max(3, int(stable_duration_sec * MIN_HR_BPM / 60 * 0.75))
-    max_beats = int(stable_duration_sec * MAX_HR_BPM / 60 * MAX_BEAT_COUNT_FACTOR) + 1
-    if len(peaks) < min_beats or len(peaks) > max_beats:
-        return False, 'beat_count'
-
-    if signal is not None and fs is not None and len(peaks) >= 3:
-        signal = np.asarray(signal)
-        indices = np.clip((np.array(peaks) * fs).astype(int), 0, len(signal) - 1)
-        heights = signal[indices]
-        amp_cv = float(np.std(heights) / (np.mean(heights) + 1e-8))
-        if amp_cv > MAX_PEAK_AMPLITUDE_CV:
-            return False, 'peak_amplitude_cv'
-
-    return True, None
 
 
 def build_fake_peaks(real_peaks, window_lo, window_hi):

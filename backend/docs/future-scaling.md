@@ -12,15 +12,11 @@ Notes for when traffic grows beyond a small TestFlight group. Not required for c
 - **Request queue** — if CPU-bound processing (OpenCV + PyTorch) saturates the instance, add a short queue (Redis + worker, or Azure Queue) so bursts do not time out.
 - **PyTorch inference under threads** — the shared model cache is read-only; if you ever run threaded concurrency inside one worker, prefer one inference at a time per process (lock) or use multiple processes instead of many threads.
 
-## Saved data and History
+## Experiment data
 
-**Auth is only needed when persisting or reading user-specific data** (e.g. `/data/get_sessions`). Stateless `/process_video` does not require auth.
+Experiment persistence already exists under `/data/*`, scoped by installation UUID and trial ownership checks. There is no active History page or `/data/get_sessions` route. See [experiment database](experiment-db.md) for the implemented routes and migrations.
 
-When adding History or session storage:
-
-- Issue a stable user or device identity (Sign in with Apple, anonymous UUID on first launch).
-- Scope all DB reads/writes by that ID.
-- Do not expose global session lists without authentication.
+Account-based authentication and cross-device identity would be separate future work; the current installation UUID is not an account login.
 
 ## Deployment / performance (optional)
 

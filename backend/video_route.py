@@ -9,8 +9,6 @@ from filter_and_peaks import (
     denoise_ppg,
     find_peaks,
     filter_peaks_to_window,
-    validate_signal_quality,
-    validate_peaks_quality,
     compute_quality_metrics,
     build_fake_peaks,
     peaks_local_to_video,
@@ -18,8 +16,6 @@ from filter_and_peaks import (
     peak_detection_window_local,
     stable_signal_duration_sec,
     SIGNAL_START_OFFSET_SEC,
-    MIN_STABLE_SIGNAL_SEC,
-    BAD_SIGNAL_DETECTION_ENABLED,
 )
 from session_timing import parse_recording_started_at, build_peak_window_metadata
 from ppg_quality.classifier import classify_signal_windows
@@ -55,26 +51,9 @@ def setup_video_route(app):
 
             duration = float(processed_duration)
             peak_window = build_peak_window_metadata(duration, recording_started_at)
-            window_lo = peak_window['peak_window_start_sec']
-            window_hi = peak_window['peak_window_end_sec']
 
             clean_signal, _filtered_signal = denoise_ppg(intensities, fps)
             stable_duration = stable_signal_duration_sec(clean_signal, fps)
-            if stable_duration < MIN_STABLE_SIGNAL_SEC:
-                logging.info('not_reading: stable_signal_too_short')
-                if BAD_SIGNAL_DETECTION_ENABLED:
-                    return jsonify({'not_reading': True}), 200
-
-            signal_ok, fail_reason = validate_signal_quality(clean_signal, fps)
-            if not signal_ok:
-                logging.info(
-                    'not_reading: %s%s',
-                    fail_reason,
-                    '' if BAD_SIGNAL_DETECTION_ENABLED else ' (detection disabled)',
-                )
-                if BAD_SIGNAL_DETECTION_ENABLED:
-                    return jsonify({'not_reading': True}), 200
-
             peaks_local = find_peaks(clean_signal, fps)
             peaks_video = peaks_local_to_video(peaks_local)
             real_peaks_video = filter_peaks_to_window(peaks_video, duration)
@@ -88,21 +67,6 @@ def setup_video_route(app):
                 height,
                 stable_duration_sec=stable_duration,
             )
-
-            peaks_ok, fail_reason = validate_peaks_quality(
-                real_peaks,
-                stable_duration,
-                signal=clean_signal,
-                fs=fps,
-            )
-            if not peaks_ok:
-                logging.info(
-                    'not_reading: %s%s',
-                    fail_reason,
-                    '' if BAD_SIGNAL_DETECTION_ENABLED else ' (detection disabled)',
-                )
-                if BAD_SIGNAL_DETECTION_ENABLED:
-                    return jsonify({'not_reading': True}), 200
 
             window_lo_local, window_hi_local = peak_detection_window_local(duration)
             fake_peaks = build_fake_peaks(real_peaks, window_lo_local, window_hi_local)
