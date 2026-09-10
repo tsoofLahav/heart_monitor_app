@@ -11,7 +11,7 @@ Heart Monitor guides participants through pulse-recording preparation, assessmen
 
 The app supports English and Hebrew, including right-to-left layouts and recorded voice guidance. It includes regular training using the participant's pulse and control training using generated audio rhythms.
 
-This repository brings the mobile frontend and backend together for presentation and code review. It is a snapshot of the working projects, including current local development changes. It has no deployment workflow and does not replace the repositories connected to the live Azure deployment. Original Git histories are not imported; this repository begins with a consolidated snapshot.
+This repository brings the mobile frontend and backend together for presentation and code review. It is a snapshot of the working projects, including current local development changes. It has no deployment workflow and does not replace the repositories connected to the live Azure deployment. Both original development histories are preserved as imported ancestry, with their files relocated under `frontend/` and `backend/`. Import merges retain the current consolidated presentation snapshot. Authors, dates, and messages are preserved; commit IDs differ because paths and sensitive-file history were rewritten.
 
 ## Participant experience
 
