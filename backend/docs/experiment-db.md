@@ -1,0 +1,74 @@
+# Experiment database (Azure SQL)
+
+The Flutter app never talks to SQL directly. All participant / trial / assessment /
+session reads and writes go through HTTPS routes under `/data/*` on this App Service.
+
+## Schema
+
+Your live DB already has `Participants`, `Trials`, `Assessments`, `Sessions`.
+
+**Required one-time fix** if bootstrap logs `Invalid column name 'ClientInstallId'`:
+run [`sql/002_add_client_install_id.sql`](../sql/002_add_client_install_id.sql) in Azure Query editor.
+
+Fresh databases can instead run [`sql/001_experiment_schema.sql`](../sql/001_experiment_schema.sql).
+
+`Participants` must include **`ClientInstallId`** (unique) — the app identity key.
+
+`Participants.Condition` (`real` | `control`) is stored on the server. During external QA, the Profile selector updates it via the neutral `training_mode` API field; the raw Condition column is not returned to the client.
+
+Compatible live nuances (no code change needed):
+- `Sessions.DurationSeconds` as `int` is fine
+- `Assessments.Phase` as `nvarchar(10)` is fine
+
+## App Service configuration
+
+Set one of:
+
+1. **Preferred:** `AZURE_SQL_CONNECTION_STRING`
+   Example ODBC string:
+
+   ```
+   Driver={ODBC Driver 18 for SQL Server};Server=tcp:YOUR_SERVER.database.windows.net,1433;Database=YOUR_DB;Uid=YOUR_USER;Pwd=YOUR_PASSWORD;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;
+   ```
+
+2. Or discrete vars: `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`
+   Optional: `SQL_DRIVER` (default `ODBC Driver 18 for SQL Server`).
+
+The App Service Python runtime must have **ODBC Driver 18 for SQL Server** installed
+(or use a custom startup / container that includes it). `pyodbc` is listed in
+`requirements.txt`.
+
+## API
+
+| Method | Path | Body / query |
+|--------|------|----------------|
+| POST | `/data/bootstrap` | `{ "client_install_id": "<uuid>" }` |
+| GET | `/data/progress?client_install_id=<uuid>` | — |
+| POST | `/data/assessments` | `{ client_install_id, trial_id, phase, heartbeat_score?, questionnaire_score?, relax_mean_hr_bpm?, relax_hrv_rmssd?, relax_ibi_cv?, relax_duration_seconds?, relax_peaks_count? }` |
+| POST | `/data/sessions` | `{ client_install_id, trial_id, session_number, score, ... }` |
+| PATCH | `/data/participants/me` | `{ client_install_id, first_name?, last_name?, phone?, name?, age? }` |
+| POST | `/data/appreciations` | `{ client_install_id, trial_id, phase: before\|after, answers }` |
+| PUT | `/data/session-schedule` | `{ client_install_id, trial_id, slots: [{ trail_step, scheduled_at_utc, local_wall_time, duration_minutes }] }` |
+
+Prep migrations: [`sql/003_prep_profile_appreciations_schedules.sql`](../sql/003_prep_profile_appreciations_schedules.sql)
+(adds `FirstName`/`LastName`/`Phone`, `Appreciations`, `SessionSchedules`).
+
+Assessment relax vitals: [`sql/004_assessment_relax_vitals.sql`](../sql/004_assessment_relax_vitals.sql)
+(adds `RelaxMeanHrBpm`, `RelaxHrvRmssd`, `RelaxIbiCv`, `RelaxDurationSeconds`, `RelaxPeaksCount`).
+
+Session schedule times are stored as UTC plus Israel wall-clock (`Asia/Jerusalem`).
+
+Progress JSON never includes `condition`. It includes neutral `training_mode`:
+
+- `"ppg"` when Condition is `real` (finger PPG training sessions)
+- `"audio"` when Condition is `control` (external beep-counting sessions)
+
+Prep, PRE, and POST are identical for both arms; only training sessions (trail 2–9) differ.
+
+Trail steps: `1` = PRE, `2–9` = sessions 1–8, `10` = POST.
+
+## Temporary external-QA group selection
+
+Random assignment is disabled: new participants default to `Condition = real`. Existing assignments remain unchanged at bootstrap. `PATCH /data/participants/me` accepts optional `training_mode` (`ppg` or `audio`) and updates the identified participant's Condition (`real` or `control`). Invalid values return 400. Omitting the field leaves the assignment unchanged. No SQL migration is required.
+
+The Profile selector is available in normal app builds and is independent of developer debug overrides. Saving a group does not reset existing trial progress or scores; mixed-group testing histories should be treated as QA data. Deploy the backend change with the frontend; the frontend requires the response to echo the chosen mode before considering the profile saved. Restore the intended allocation policy and remove the manual selector before study recruitment.

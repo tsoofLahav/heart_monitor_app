@@ -1,0 +1,635 @@
+{
+  "profileGroup": "Group",
+  "profileGroupRegular": "Regular",
+  "profileGroupControl": "Control",
+  "sessionScoreTitle": "Session score",
+  "matchingScore": "Matching score",
+  "formNext": "Next",
+  "soundStatusUnavailable": "Sound settings could not be verified. Keep the app open while we check again.",
+  "@@locale": "en",
+  "recordingNoCountCaption": "Keep your finger still until you are told to lift it.",
+  "continueAction": "Continue",
+  "tryAgain": "Try again",
+  "start": "Start",
+  "done": "Done",
+  "cancel": "Cancel",
+  "na": "N/A",
+  "backToMenu": "Back to menu",
+  "end": "End",
+  "reset": "Reset",
+  "finish": "Finish",
+  "nextRound": "Next round",
+  "startAgain": "Start again",
+  "profile": "Profile",
+  "language": "Language",
+  "languageEnglish": "English",
+  "languageHebrew": "עברית",
+  "languageSectionSubtitle": "Choose the app language.",
+  "turnSoundOn": "Turn sound on",
+  "soundGateBody": "This app uses voice instructions and beeps. Turn off Silent mode, raise the volume, and check that you can hear the test sound.",
+  "phoneSilentVibrate": "Phone is on Silent / Vibrate",
+  "ringerSwitchOk": "Ring / Silent switch is OK",
+  "flipSilentSwitchHint": "Flip the Silent switch off (or leave Vibrate).",
+  "volumeUpHint": "Use the side buttons to turn volume up.",
+  "playTestBeep": "Play test voice",
+  "waitingForSound": "Waiting for sound…",
+  "volumeLoudEnough": "Volume is loud enough ({percent}%)",
+  "@volumeLoudEnough": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "volumeTooLow": "Volume too low ({percent}% — need {needPercent}%+)",
+  "@volumeTooLow": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "needPercent": {
+        "type": "int"
+      }
+    }
+  },
+  "welcomeToHeartMonitor": "Welcome to\nHeart Monitor",
+  "personalHeartMonitor": "Personal Heart Monitor",
+  "todaysPractice": "Today's Practice",
+  "notAvailableInFlightTest": "Not available in flight test",
+  "moreFlows": "More flows",
+  "pulseReadingGuide": "Pulse reading guide",
+  "finishGuideBeforeStart": "Finish the pulse reading guide here before you start.",
+  "moreTitle": "More",
+  "otherTrainingAndTools": "Other training and tools",
+  "forestTrail": "Forest trail",
+  "forestTrailSubtitle": "PRE assessment, 8 training sessions, then POST.",
+  "preAssessmentTitle": "Pre assessment",
+  "postAssessmentTitle": "Post assessment",
+  "assessmentSessionHeaderPre": "Session 1 — Pre assessment",
+  "assessmentSessionHeaderPost": "Session 10 — Post assessment",
+  "leaveSessionTitle": "Leave this session?",
+  "leaveSessionBody": "You are leaving session {number}. If you have not finished, you will have to start it over.",
+  "@leaveSessionBody": {
+    "placeholders": {
+      "number": { "type": "int" }
+    }
+  },
+  "leaveSessionConfirm": "Leave",
+  "okAction": "OK",
+  "controlStartSoundWhenReady": "Start sound when ready",
+  "practiceIntroBody": "Record your pulse as you learned.\n\nCount your heartbeats without touching your chest or pulse. Start at the first beep and stop at the second.\n\nThen enter your count and match the rhythm. Repeat for two rounds.",
+  "controlPracticeIntroBody": "In this practice there are 2 rounds.\n\nIn each round close your eyes, listen to the beeps, and try to count them.\n\nAfterwards you will be asked to enter the number and match the rhythm you heard.",
+  "sessionScoreLine": "Session score:\n{score}%",
+  "@sessionScoreLine": {
+    "placeholders": {
+      "score": { "type": "int" }
+    }
+  },
+  "trailSessionScoreBubble": "Score session {session}: {score}",
+  "@trailSessionScoreBubble": {
+    "placeholders": {
+      "session": { "type": "int" },
+      "score": { "type": "int" }
+    }
+  },
+  "preAssessmentIntro": "You will record your pulse, count the beats you felt, and rate your confidence.\n\nThe first recording lasts 15 seconds. After that you will repeat the same steps a few more times (the length will vary and will not be shown).\n\nThen you will hear pairs of rhythms and choose which one matches yours.",
+  "postAssessmentIntro": "Same evaluation as at the start: five pulse-count trials, then six rhythm choices.\n\nThe first recording lasts 15 seconds; the rest vary and hide the timer.",
+  "assessmentGateBody": "This session has 12 steps and lasts around 10 minutes.\n\nNotice: once you start the session you cannot close it, or you will have to start from the beginning.",
+  "assessmentStep1Body": "Record your pulse as you learned.\n\nCount your heartbeats while recording, without touching your chest or pulse.\n\nStart counting at the first beep and stop at the second.",
+  "assessmentAfterStep1Body": "Repeat for four rounds of different lengths. Count between the beeps. Keep still until you are told to lift your finger.",
+  "assessmentHalfwayMatchBody": "Next: six rhythm matches. Feel your heartbeat during each measurement—no counting or beeps. Wait for the voice, then match the rhythm.",
+  "assessmentRelaxBody": "Relax for one minute. No counting or beeps. Keep your finger still until you are told to lift it.",
+  "assessmentGoodJob": "Good job",
+  "assessmentStartStep": "Start step {current}/{total}",
+  "@assessmentStartStep": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "assessmentGoodJobStartStep": "Good job, start step {current}/{total}.",
+  "@assessmentGoodJobStartStep": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "assessmentStepProgress": "Step {current}/{total}",
+  "@assessmentStepProgress": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "assessmentAbandonTitle": "Leave assessment?",
+  "assessmentAbandonBody": "If you leave now you will have to start this assessment from the beginning.",
+  "assessmentAbandonConfirm": "Leave",
+  "assessmentPreFinishBody": "You have finished the first and longest step in your journey.\n\nNext steps will be much shorter. You need to finish 9 in two weeks, with at least one day gap between each step.",
+  "assessmentPostFinishBody": "You have finished your journey.\n\nWe thank you for contributing to our study — it serves a great purpose.",
+  "nextAction": "Next",
+  "practiceSessionHeader": "Session {number}",
+  "@practiceSessionHeader": {
+    "placeholders": {
+      "number": { "type": "int" }
+    }
+  },
+  "assessmentRepeatBody": "Count between the beeps, then enter your count and confidence.",
+  "assessmentTrialProgress": "Trial {current} / {total}",
+  "@assessmentTrialProgress": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "assessmentRhythmProgress": "Rhythm question {current} / {total}",
+  "@assessmentRhythmProgress": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "assessmentRhythmTitle": "Rhythm {current} / {total}",
+  "@assessmentRhythmTitle": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "assessmentListeningA": "Listen to rhythm A",
+  "assessmentListeningB": "Listen to rhythm B",
+  "assessmentWhichRhythm": "Which rhythm matches yours?",
+  "assessmentPickA": "Rhythm A",
+  "assessmentPickB": "Rhythm B",
+  "assessmentSecondsLeft": "{seconds}s",
+  "@assessmentSecondsLeft": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "assessmentPleaseWait": "Please wait…",
+  "assessmentSaveFailed": "Could not save assessment. Check your connection and try again.",
+  "experimentSessionSaveFailed": "Could not save this session to the server. Check your connection and try again.",
+  "startPreAssessment": "Start pre assessment",
+  "continueToPostAssessment": "Continue to post assessment",
+  "continueToTrainingSession": "Continue to session {number}",
+  "@continueToTrainingSession": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "startTodaysSession": "Start today's session",
+  "startSession": "Start session",
+  "trailOpensTomorrow": "Your session will open tomorrow",
+  "experimentStepsDone": "{completed} / {total} steps done",
+  "@experimentStepsDone": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "experimentBootstrapFailed": "Could not sync experiment progress. Using saved progress if available.",
+  "quickProtocolTest": "Quick protocol test",
+  "quickProtocolTestSubtitle": "Practice the full protocol without saving experiment progress.",
+  "saving": "Saving…",
+  "pilote": "Pilote",
+  "piloteSubtitle": "Record and export session data.",
+  "setupAndQuality": "Setup & quality",
+  "setupAndQualitySubtitle": "Pulse guide and ML quality test.",
+  "protocolTest": "Protocol test",
+  "protocolTestSubtitle": "Full protocol with random 20–40s recordings.",
+  "sessions": "Sessions",
+  "sessionDetails": "Session Details",
+  "bpmOverTime": "BPM Over Time",
+  "hrvOverTime": "HRV Over Time",
+  "calibrationHubIntro": "Learn finger placement and check signal quality before practice.",
+  "pulseGuideTileSubtitle": "Instructions and quality practice.",
+  "qualityTest": "Quality test",
+  "qualityTestSubtitle": "One longer capture with ML quality breakdown.",
+  "pulseReadingGuideTitle": "Pulse Reading Guide",
+  "preparation": "Preparation",
+  "completeEachStepOnce": "Complete each step once. You can reopen any step later.",
+  "cameraStep": "Camera",
+  "cameraStepSubtitle": "Find which rear lens to cover.",
+  "instructionsStep": "Instructions",
+  "instructionsStepSubtitle": "How to take a reading.",
+  "qualityPracticeStep": "Quality practice",
+  "qualityPracticeStepSubtitle": "Get 3 good readings in a row.",
+  "findYourCamera": "Find your camera",
+  "findYourPulseCamera": "Find your pulse camera",
+  "coverRearLensHint": "Cover the camera until your finger fills the preview. Keep still and follow the voice.",
+  "noChangeTryNextCamera": "No change? Try another lens, or tap Try next camera.",
+  "holdStillOnLens": "Hold still on the lens…",
+  "tryNextCamera": "Try next camera",
+  "thisIsYourPulseCamera": "This is your pulse camera",
+  "remember": "Remember",
+  "whichLensYouCovered": " which lens you covered — use that same one for every reading.",
+  "forgotLaterOpenCamera": "Forgot later? Open Camera again in the Pulse Reading Guide.",
+  "noRearCameraFound": "No rear camera found on this device.",
+  "couldNotOpenCamera": "Could not open the camera. Check permissions and try again.",
+  "somethingWentWrong": "Something went wrong.",
+  "instructionCaption1": "Find a comfortable, quiet place with Wi‑Fi.",
+  "instructionCaption2": "Press Start, then flip the phone over.",
+  "instructionCaption3a": "Rest your hand on the phone and cover the bottom lens with your finger.",
+  "instructionCaption3b": "Listen to the voice and keep your finger still.",
+  "instructionCaption4a": "Lift your finger only when the voice tells you to.",
+  "instructionCaption4b": "Flip the phone back and continue with instructions.",
+  "readyForQualityPractice": "Practice recording your pulse correctly.",
+  "nextYoullTakeShortReadings": "Next you’ll take short readings until you get 3 good ones in a row.",
+  "instructionsTitle": "Instructions",
+  "qualityPracticeTitle": "Quality Practice",
+  "practiceResultTitle": "Practice Result",
+  "tutorialCompleteTitle": "Tutorial Complete",
+  "get3GoodReadings": "Get 3 good readings in a row.",
+  "startPractice": "Start Practice",
+  "practiceRetryHint": "Try again. Keep your hand stable, finger on the camera, and don't move during recording.",
+  "tutorialComplete": "Tutorial complete!",
+  "successful": "SUCCESSFUL",
+  "notSuccessful": "NOT SUCCESSFUL",
+  "qualityTestResult": "Quality Test Result",
+  "noSignalData": "No signal data",
+  "windowPredictions": "Window predictions",
+  "cameraOrdinalOfCount": "Camera {ordinal} of {count}",
+  "@cameraOrdinalOfCount": {
+    "placeholders": {
+      "ordinal": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "streakProgress": "Streak: {current} / {required}",
+  "@streakProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "required": {
+        "type": "int"
+      }
+    }
+  },
+  "tutorialCompleteBody": "You completed {required} successful readings in a row after {attempts} attempts.",
+  "@tutorialCompleteBody": {
+    "placeholders": {
+      "required": {
+        "type": "int"
+      },
+      "attempts": {
+        "type": "int"
+      }
+    }
+  },
+  "readingQuality": "Reading quality: {label}",
+  "@readingQuality": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "probGoodBad": "P(good) = {good}%  |  P(bad) = {bad}%",
+  "@probGoodBad": {
+    "placeholders": {
+      "good": {
+        "type": "String"
+      },
+      "bad": {
+        "type": "String"
+      }
+    }
+  },
+  "durationAndPeaks": "Duration: {duration}s  |  Peaks: {peaks}",
+  "@durationAndPeaks": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      },
+      "peaks": {
+        "type": "String"
+      }
+    }
+  },
+  "windowTimeRange": "{start}s – {end}s",
+  "@windowTimeRange": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "windowLabelProb": "{label}  ({prob}% good)",
+  "@windowLabelProb": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "prob": {
+        "type": "String"
+      }
+    }
+  },
+  "pressStartThenFlip": "Press Start when you are ready, then flip the phone and cover the lens with your finger.\n\nFollow the voice instructions.",
+  "flashOnPreparing": "Flash on — preparing…",
+  "liftFingerMoment": "Lift your finger for a moment…",
+  "coverLensHoldStill": "Cover the lens and hold still.",
+  "holdStill": "Hold still…",
+  "fingerNotDetected": "Finger not detected. Adjust placement or tap Cancel.",
+  "wrongCameraHint": "Wrong camera. Try again with another camera.",
+  "preferredCameraPlacementHint": "Cover the same rear lens you identified and hold still.",
+  "readingError": "Reading error",
+  "badReadingDialogBody": "Try again. Make sure your hand is resting stable, your finger is covering the camera, and you are not moving during recording.",
+  "piloteRecording": "Pilote recording",
+  "qualityTestTitle": "Quality Test",
+  "practiceReading": "Practice Reading",
+  "protocolRecording": "Protocol recording",
+  "processingDataWait": "Processing data, wait for results",
+  "stopping": "Stopping…",
+  "recordingInterrupted": "Recording was interrupted.",
+  "recordingErrorRetry": "Recording error. Please try again.",
+  "serverErrorRetry": "Server error. Please try again.",
+  "networkErrorRetry": "Network error. Please try again.",
+  "first": "First",
+  "second": "Second",
+  "protocolRecordingCaption": "{which} recording — press Start when ready.",
+  "@protocolRecordingCaption": {
+    "placeholders": {
+      "which": {
+        "type": "String"
+      }
+    }
+  },
+  "training": "Training",
+  "howThisWorks": "How this works",
+  "twoRounds": "Two rounds",
+  "twoRoundsBody": "You will do two short recordings.\n\nAfter each one, you will count the beats you felt, rate your confidence, and match the presented rhythm to your own.",
+  "duringRecording": "During recording",
+  "duringRecordingBody": "Count your heartbeats between the two beeps, without touching your pulse or chest. Keep still until you are told to lift your finger.",
+  "controlTwoRoundsTitle": "Two rounds",
+  "controlTwoRoundsBody": "You will hear two beep sequences.\n\nAfter each one, enter how many beeps you counted, rate your confidence, then match the rhythm you heard.",
+  "controlDuringListeningTitle": "While listening",
+  "controlDuringListeningBody": "Close your eyes.\n\nCount every beep from start to finish.\n\nThen open your eyes and continue.",
+  "iUnderstand": "I understand",
+  "howManyBeatsCounted": "How many beats did you count?",
+  "enterNumber": "Enter number",
+  "howConfident": "How confident are you?",
+  "slideTillRhythmMatches": "Slide till the rhythm matches your own.",
+  "controlSlideTillRhythmMatches": "Slide till the rhythm matches what you heard.",
+  "controlListenTitle": "Round {number} — Listen",
+  "@controlListenTitle": {
+    "placeholders": {
+      "number": { "type": "int" }
+    }
+  },
+  "controlListeningBody": "Close your eyes and count the beeps until they stop.",
+  "protocolSummary": "Protocol summary",
+  "roundResults": "Round results",
+  "targetNetDebug": "Target net (debug)",
+  "actualBeats": "Actual beats",
+  "yourCount": "Your count",
+  "confidence": "Confidence",
+  "countScore": "Count score",
+  "sliderBpm": "Slider BPM",
+  "measuredHr": "Measured HR",
+  "hrError": "HR error",
+  "hrAccuracy": "HR accuracy",
+  "roundScore": "Round score",
+  "preparingFinalScore": "Preparing final score…",
+  "roundFooter": "Round {number}/{total}",
+  "@roundFooter": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "roundCountBeatsTitle": "Round {number} — Count beats",
+  "@roundCountBeatsTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "roundHeartRateTitle": "Round {number} — Heart rate",
+  "@roundHeartRateTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "roundSummaryTitle": "Round {number} summary",
+  "@roundSummaryTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "roundLabel": "Round {number}",
+  "@roundLabel": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "percentValue": "{value}%",
+  "@percentValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "secondsValue": "{value} s",
+  "@secondsValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "yourJourney": "Your Journey",
+  "youReachedTheEnd": "You reached the end!",
+  "allDone": "All done!",
+  "startSession1": "Start session 1",
+  "resetProgressTitle": "Reset progress?",
+  "resetProgressBody": "This will clear all completed sessions and start from the beginning.",
+  "resetProgressTooltip": "Reset progress",
+  "allSessionsCompleted": "All {total} sessions completed",
+  "@allSessionsCompleted": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionOfTotal": "Session {current} of {total}",
+  "@sessionOfTotal": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionsDone": "{completed} / {total} sessions done",
+  "@sessionsDone": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "continueToSession": "Continue to session {number}",
+  "@continueToSession": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionScoreCaption": "Your session score is {score}%.\nThe clearer the image, the higher your score.",
+  "@sessionScoreCaption": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "noSessionData": "No session data.",
+  "saveShare": "Save / share",
+  "sessionName": "Session name",
+  "fileNameWithoutPdf": "File name (without .pdf)",
+  "sharePdf": "Share PDF",
+  "savePdfToPhone": "Save PDF to phone",
+  "sendToWhatsApp": "Send to WhatsApp",
+  "openSessionDataList": "Open Session Data list",
+  "sessionData": "Session Data",
+  "viewSignal": "View signal",
+  "noCleanSignal": "No clean_signal in this session.",
+  "signalRealPeaksMarked": "Signal (real peaks marked)",
+
+  "prepProfile": "Profile",
+  "prepQuestionnaires": "Questionnaires",
+  "prepCamera": "Camera",
+  "prepQualityCheck": "Quality check",
+  "prepTiming": "Timing",
+  "finishPrepBeforeStart": "Finish all four preparation steps below before you start.",
+  "prepOnboardingHint": "Complete each step below. Tap the glowing icon to continue.",
+  "prepBubbleProfile": "Fill personal details",
+  "prepBubbleQuestionnaire": "Fill questionnaire",
+  "prepBubbleQuality": "Complete quality check",
+  "prepBubbleTiming": "Set your session schedule",
+  "prepTrainingTitle": "Preparation for training",
+  "prepStepsProgress": "Completed {done} of {total} steps",
+  "@prepStepsProgress": {
+    "placeholders": {
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "prepCardProfileTitle": "Fill personal details",
+  "prepCardProfileSubtitle": "Name and phone",
+  "prepCardQuestionnaireTitle": "Questionnaire",
+  "prepCardQuestionnaireSubtitle": "Will be added later",
+  "prepCardCameraTitle": "Prepare the camera",
+  "prepCardCameraSubtitle": "Short setup",
+  "prepCardQualityTitle": "How to use the camera to read your pulse?",
+  "prepCardQualitySubtitle": "Instructions and practice",
+  "prepCardCompleted": "Completed",
+  "prepStartTraining": "Start training",
+  "prepStartLockedHint": "Available after preparation is complete",
+  "questionnaireComingSoon": "Will be added later",
+  "approveAction": "Approve",
+  "cameraFindTitle": "Find the camera you will be using during the practice",
+  "cameraFindBody": "Cover each rear camera in turn with your finger until your finger fills the preview.",
+  "cameraRememberTitle": "Remember this is the camera for the practice",
+  "cameraRememberHint": "If you forget later you can find this section in the bottom menu of the app.",
+  "pulseGuideComicsTitle": "Your pulse reading steps",
+  "trailCoachBubble1": "There are 10 steps to do in 2 weeks. The first and last take about 10 minutes each; the others about 2 minutes.",
+  "trailCoachBubble2": "Each time, the next step will open 24 hours after you finish the current one.",
+  "trailCoachBubble3": "You may use our notifications system to set reminders for your sessions.",
+  "trailStepOpensIn24h": "Opens 24 hours after previous step",
+  "trailStepLockedHours": "This step unlocks in {hours}h {minutes}m",
+  "@trailStepLockedHours": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "protocolRecordingReadyCaption": "Press Start when you are ready, then flip the phone and cover the lens with your finger.\n\nFollow the voice instructions.",
+  "firstName": "First name",
+  "lastName": "Last name",
+  "phoneNumber": "Phone number",
+  "profileSave": "Save profile",
+  "profileSaved": "Profile saved.",
+  "profileIncomplete": "Please fill first name, last name, and phone.",
+  "profileSaveFailed": "Could not sync profile to the server. Details are saved on this device.",
+  "appreciationTitleBefore": "Before practice",
+  "appreciationTitleAfter": "After practice",
+  "appreciationIntro": "Please answer a few short questions. Your answers help us understand your experience.",
+  "appreciationSubmit": "Submit answers",
+  "appreciationSaved": "Answers saved.",
+  "appreciationSaveFailed": "Could not save answers. Check your connection and try again.",
+  "appreciationQ1": "How motivated do you feel to notice your heartbeat? (1–5)",
+  "appreciationQ2": "How confident are you that you can feel your pulse? (1–5)",
+  "appreciationQ3": "Any brief note about how you feel today (optional)",
+  "timingTitle": "Session schedule",
+  "timingIntro": "You need to finish 10 sessions of the game in 2 weeks. The first and last sessions are approximately 10 minutes each; the others are approximately 2 minutes each.",
+  "timingNotificationsHint": "You may use our notifications system to schedule reminders for your sessions.",
+  "timingScrollToReminders": "Optional reminders — scroll down",
+  "timingRemindersSection": "Reminder times",
+  "timingEnableReminders": "Enable reminders & finish",
+  "timingFinish": "Finish",
+  "timingFinishedNoNotifs": "Preparation finished. Reminders are off.",
+  "timingIsraelNote": "All times are in Israel time (Asia/Jerusalem).",
+  "timingSessionLabel": "Session {number}",
+  "@timingSessionLabel": {
+    "placeholders": {
+      "number": { "type": "int" }
+    }
+  },
+  "timingSessionKindPre": "PRE assessment (~10 min)",
+  "timingSessionKindTraining": "Training {number} (~2 min)",
+  "@timingSessionKindTraining": {
+    "placeholders": {
+      "number": { "type": "int" }
+    }
+  },
+  "timingSessionKindPost": "POST assessment (~10 min)",
+  "timingPickDate": "Date",
+  "timingPickTime": "Time",
+  "timingSave": "Save schedule & reminders",
+  "timingSaved": "Schedule saved.",
+  "timingSaveFailed": "Could not sync schedule to the server. Reminders may still be set on this device.",
+  "timingNotifPermissionDenied": "Notifications were denied. Schedule is saved, but reminders will not appear.",
+  "timingNotifTitle": "Heart practice reminder",
+  "timingNotifBody": "Session {number} is scheduled now (~{minutes} min).",
+  "@timingNotifBody": {
+    "placeholders": {
+      "number": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  }
+}
