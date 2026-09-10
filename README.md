@@ -1,112 +1,81 @@
 <div align="center">
-  <img src="frontend/assets/logo_monitor_mark.png" alt="Monitor logo" width="120" />
+  <img src="frontend/assets/logo_monitor_mark.png" alt="Heart Monitor logo" width="100" />
   <h1>Heart Monitor</h1>
-  <p>A bilingual mobile app for heartbeat-perception practice, with camera-based pulse analysis.</p>
-  <p><strong>Flutter · Python / Flask · OpenCV · PyTorch · Azure SQL</strong></p>
+  <p><strong>A mobile research platform for interoceptive training</strong></p>
+  <p>Python · Flask · OpenCV · PyTorch · Azure SQL · Flutter</p>
 </div>
 
-## About the project
+## Built for research
 
-Heart Monitor guides participants through pulse-recording preparation, assessments, and a sequence of practice sessions. Participants use a phone's rear camera and flash to record their fingertip. The backend extracts a photoplethysmography (PPG) signal, detects pulse peaks, and classifies recording quality with a neural network.
+Developed in cooperation with **Brain Lab at Reichman University**, Heart Monitor supports an experiment investigating whether training awareness of internal bodily signals—**interoception**—can contribute to chronic-pain treatment.
 
-The app supports English and Hebrew, including right-to-left layouts and recorded voice guidance. It includes regular training using the participant's pulse and control training using generated audio rhythms.
+The platform brings camera-based pulse measurement, machine-learning quality assessment, and guided heartbeat-perception exercises into a structured participant experience, with experimental and control training flows.
 
-This repository brings the mobile frontend and backend together for presentation and code review. It is a snapshot of the working projects, including current local development changes. It has no deployment workflow and does not replace the repositories connected to the live Azure deployment. Both original development histories are preserved as imported ancestry, with their files relocated under `frontend/` and `backend/`. Import merges retain the current consolidated presentation snapshot. Authors, dates, and messages are preserved; commit IDs differ because paths and sensitive-file history were rewritten.
+## Backend · From fingertip video to pulse measurement
 
-## Participant experience
+The backend converts subtle changes in fingertip colour into a photoplethysmography (**PPG**) signal. OpenCV extracts the signal from camera frames; filtering and peak detection recover the pulse rhythm. The Flask API returns the waveform, detected beats, and recording quality, while Azure SQL stores study records.
 
-1. Choose a language and complete the preparation steps: profile, questionnaire step, camera identification, and pulse-recording practice.
-2. Complete the initial assessment.
-3. Follow the ten-step trail: initial assessment, eight training sessions, and final assessment.
-4. Review feedback on counted versus measured/generated beats, counting accuracy, and rhythm matching.
-5. Set optional local reminders for upcoming sessions.
+### Comparison against the lab’s ECG monitor
 
-The regular and control training rounds independently choose a net duration between 20 and 40 seconds. Recording preparation and buffers are additional; assessment and preparation steps have their own timings. During external QA, the training group is selected in Profile rather than randomly assigned.
+Pulse detection was evaluated against an ECG monitor in the lab using synchronized recordings. The comparison below shows the reference ECG R-peaks alongside the app’s detected PPG peaks.
 
-<details>
-<summary>Camera tutorial illustrations</summary>
-<p>These are the in-app instruction assets, not screenshots of the current interface.</p>
-<p>
-  <img src="frontend/assets/step1.png" alt="Camera tutorial illustration, step one" width="200" />
-  <img src="frontend/assets/step2.png" alt="Camera tutorial illustration, step two" width="200" />
-</p>
-<p>
-  <img src="frontend/assets/step3.png" alt="Camera tutorial illustration, step three" width="200" />
-  <img src="frontend/assets/step4.png" alt="Camera tutorial illustration, step four" width="200" />
-</p>
-</details>
+![Laboratory comparison of ECG R-peaks and camera-derived PPG peaks](docs/images/compare_app_to_monitor.png)
 
-## How it works
+*Example lab recording. The traces are normalized and vertically separated for visibility.*
+
+The validation script aligns recording timestamps, derives heart rate from consecutive peaks (**BPM = 60 / interval in seconds**), and matches the interval sequences in order. It reports error, agreement, and coverage, including penalties for unmatched intervals.
 
 ```mermaid
 flowchart LR
-    A[Flutter mobile app] -->|Silent fingertip video + cue offsets| B[Flask API]
-    B --> C[OpenCV intensity extraction]
-    C --> D[Signal filtering and peak detection]
-    D --> E[PyTorch quality classification]
-    E -->|Signal, peaks and quality feedback| A
-    A -->|Profile, assessments and session results| F[Experiment API]
-    F --> G[(Azure SQL)]
+    E[Lab ECG R-peaks] --> R[RR intervals]
+    P[App PPG peaks] --> I[Pulse intervals]
+    R --> H[Convert intervals to BPM]
+    I --> H
+    H --> M[Ordered matching and edge-offset sweep]
+    M --> A[Error, agreement and coverage]
 ```
 
-The video endpoint uses a unique temporary file for each request and cleans it up afterward. Analysis results are returned to the requesting client; uploaded videos are not retained in SQL. Experiment records are scoped to an installation identifier and trial ownership checks. Installation identity is not account-based authentication.
+[Comparison method and calculations →](docs/validation/README.md)
 
-The quality model evaluates approximately ten-second signal windows. Counting cues carry their offsets to the backend so scoring uses the intended counting interval. Audible output and native camera latency still require device verification; timing is not a claim of sample-accurate synchronization.
+### Machine learning · Quality before feedback
 
-## Explore the code
+Reliable recordings are essential for meaningful practice: distorted signals can turn measurement error into misleading participant feedback. A custom **two-branch PyTorch neural network** evaluates ten-second windows using both waveform shape and peak timing, helping identify recordings that need to be repeated.
 
-- [Frontend](frontend/README.md): Flutter screens, localization, recording, guidance, reminders and study flow.
-- [Backend](backend/README.md): Flask routes, PPG processing, quality classification and persistence.
-- [Frontend module guide](frontend/lib/README.md)
-- [Study protocol](frontend/docs/protocol.md)
-- [Database schema and API setup](backend/docs/experiment-db.md)
-- [Android builds and device checklist](frontend/docs/android-preparation.md)
-- [Snapshot scope](docs/snapshot.md)
+The model was developed with **2,592 labeled PPG segments from BUT PPG and BIDMC**, including 1,835 training segments. The bundled checkpoint achieved **95.3% accuracy and 0.971 F1** for the good-quality class on 379 test segments. These are internal segment-level results; recordings can contribute different segments to training and testing, so they do not establish performance on unseen participants. [Evaluation details →](docs/validation/README.md#signal-quality-model)
 
-## Run locally
-
-### Backend
-
-Use Python with compatible wheels for the dependencies in `requirements.txt`:
-
-```sh
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-python server.py
+```mermaid
+flowchart LR
+    W[PPG waveform · 300 samples] --> C[1D CNN · waveform features]
+    P[Peak mask] --> PC[1D CNN · peak features]
+    R[5 interval statistics] --> FC[Feature network]
+    PC --> PF[Peak-branch fusion]
+    FC --> PF
+    C --> F[Combine both branches]
+    PF --> F
+    F --> Q[Classifier · GOOD / BAD]
 ```
 
-The development API listens on port 5000. `GET /health` reports service availability. The quality checkpoint is included at `backend/models/ppg_quality_both.pt`.
+<p align="center">
+  <img src="docs/images/good_signal.jpeg" alt="Good signal: successful pulse-recording practice" width="230" />
+  &nbsp;&nbsp;
+  <img src="docs/images/bad_signal.jpeg" alt="Bad signal: quality feedback prompts another recording" width="230" />
+</p>
 
-Persistence requires Azure SQL, ODBC Driver 18, and the environment variables described in the [database guide](backend/docs/experiment-db.md). Health and video-analysis routes can run without SQL configuration. Do not put database passwords in source control.
+## Frontend · A guided participant experience
 
-### Mobile app
+The **Flutter app for iOS and Android** guides participants from camera preparation through assessment, heartbeat counting, and rhythm matching. English and Hebrew interfaces, right-to-left layouts, voice guidance, and timed counting cues support use while the phone is face down.
 
-Install Flutter and the platform toolchain (Xcode/CocoaPods for iOS; Android SDK/JDK for Android):
+A visual progress trail structures the study into an initial assessment, eight training sessions, and a final assessment. Clear feedback and optional reminders support continued participation. The experience was reviewed through **QA by Human–Computer Interaction master’s students**, informing refinements to instructions, navigation, and visual consistency.
 
-```sh
-cd frontend
-flutter pub get
-flutter run --dart-define=BACKEND_URL=https://YOUR_BACKEND_HOST
-```
+<p align="center">
+  <img src="docs/images/front1.jpeg" alt="Study progress trail" width="180" />
+  <img src="docs/images/front2.jpeg" alt="Hebrew camera preparation tutorial" width="180" />
+  <img src="docs/images/front3.jpeg" alt="Visual session feedback" width="180" />
+  <img src="docs/images/front4.jpeg" alt="Interactive heartbeat rhythm matching" width="180" />
+</p>
 
-`BACKEND_URL` is a build-time setting shared by video uploads and experiment requests. This presentation copy defaults to a placeholder host, not the live study deployment. Use a phone-accessible HTTPS endpoint for physical-device testing; `localhost` on a phone is the phone itself.
+## Explore the project
 
-An Android APK can be installed privately without Google Play. Release signing keys are intentionally absent; follow the [Android guide](frontend/docs/android-preparation.md) to generate your own.
+[Backend](backend/README.md) · [Frontend](frontend/README.md) · [Study protocol](frontend/docs/protocol.md) · [Device verification](frontend/docs/android-preparation.md)
 
-## Verification and readiness
-
-```sh
-# From frontend/
-flutter analyze --no-fatal-infos
-flutter test
-
-# From backend/, with its dependencies installed
-python -m unittest discover -s tests
-python test_ppg_classifier.py
-```
-
-The frontend test suite passed all 67 tests again in this standalone repository. The working frontend also previously produced a signed Android release APK and an unsigned iOS build. This snapshot does not include those binaries or the signing key. Android camera behavior, audible cue timing, sound-state handling, and notifications still need physical-device testing. A successful build does not establish clinical accuracy or production capacity.
-
-This is a research/practice application, not a validated diagnostic medical device.
+Both **backend and frontend development histories are preserved** in this presentation repository. [Repository scope and history →](docs/snapshot.md)

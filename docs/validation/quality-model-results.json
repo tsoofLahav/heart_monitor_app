@@ -1,0 +1,65 @@
+{
+  "best_epoch": 47,
+  "best_val_f1": 0.9818780889621087,
+  "best_val_loss": 0.04487469111367193,
+  "mode": "both",
+  "test_metrics": {
+    "accuracy": 0.9525065963060686,
+    "confusion_matrix": {
+      "labels": [
+        "bad",
+        "good"
+      ],
+      "matrix": [
+        [
+          57,
+          7
+        ],
+        [
+          11,
+          304
+        ]
+      ]
+    },
+    "f1": 0.9712460063897763,
+    "misclassified_count": 18,
+    "n_samples": 379,
+    "precision": 0.977491961414791,
+    "recall": 0.9650793650793651,
+    "roc_auc": 0.9893849206349207,
+    "split": "test",
+    "threshold": 0.5
+  },
+  "test_samples": 379,
+  "train_samples": 1835,
+  "val_metrics": {
+    "accuracy": 0.9708994708994709,
+    "confusion_matrix": {
+      "labels": [
+        "bad",
+        "good"
+      ],
+      "matrix": [
+        [
+          69,
+          3
+        ],
+        [
+          8,
+          298
+        ]
+      ]
+    },
+    "f1": 0.9818780889621087,
+    "misclassified_count": 11,
+    "n_samples": 378,
+    "precision": 0.9900332225913622,
+    "recall": 0.9738562091503268,
+    "roc_auc": 0.9903322440087146,
+    "split": "val",
+    "threshold": 0.5
+  },
+  "val_samples": 378,
+  "split_policy": "mixed_per_recording",
+  "checkpoint_sha256": "5440a5781ff2260c6d8d5d853760d6693434095f5db91dec72dd8c329fded053"
+}
