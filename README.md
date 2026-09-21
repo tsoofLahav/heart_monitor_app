@@ -11,6 +11,10 @@ Developed in cooperation with **Brain Lab at Reichman University**, Heart Monito
 
 The platform brings camera-based pulse measurement, machine-learning quality assessment, and guided heartbeat-perception exercises into a structured participant experience, with experimental and control training flows.
 
+<p align="center">
+  <a href="docs/images/method-overview.png"><img src="docs/images/method-overview.png" alt="Heart Monitor method overview: camera-based PPG, signal processing, ML quality validation, heartbeat feedback, and participant study flow" width="900" /></a>
+</p>
+
 ## Backend · From fingertip video to pulse measurement
 
 The backend converts subtle changes in fingertip colour into a photoplethysmography (**PPG**) signal. OpenCV extracts the signal from camera frames; filtering and peak detection recover the pulse rhythm. The Flask API returns the waveform, detected beats, and recording quality, while Azure SQL stores study records.
