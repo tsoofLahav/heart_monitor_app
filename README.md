@@ -15,6 +15,10 @@ The platform brings camera-based pulse measurement, machine-learning quality ass
 
 The backend converts subtle changes in fingertip colour into a photoplethysmography (**PPG**) signal. OpenCV extracts the signal from camera frames; filtering and peak detection recover the pulse rhythm. The Flask API returns the waveform, detected beats, and recording quality, while Azure SQL stores study records.
 
+### PPG vs ECG validation
+
+In a pilot study of 15 participants × 3 recordings (45 recordings), smartphone PPG showed strong beat-to-beat agreement with synchronized ECG: 1.53 BPM MAE, 2.03 BPM RMSE, 96.35% of matched intervals within ±5 BPM, and r = 0.79, with >91% usable-interval coverage.
+
 ### Comparison against the lab’s ECG monitor
 
 Pulse detection was evaluated against an ECG monitor in the lab using synchronized recordings. The comparison below shows the reference ECG R-peaks alongside the app’s detected PPG peaks.
