@@ -19,6 +19,10 @@ The platform brings camera-based pulse measurement, machine-learning quality ass
 
 The backend converts subtle changes in fingertip colour into a photoplethysmography (**PPG**) signal. OpenCV extracts the signal from camera frames; filtering and peak detection recover the pulse rhythm. The Flask API returns the waveform, detected beats, and recording quality, while Azure SQL stores study records.
 
+### PPG vs ECG validation
+
+In a pilot study of 15 participants × 3 recordings (45 recordings), smartphone PPG showed strong beat-to-beat agreement with synchronized ECG: 1.53 BPM MAE, 2.03 BPM RMSE, 96.35% of matched intervals within ±5 BPM, and r = 0.79, with >91% usable-interval coverage.
+
 ### Comparison against the lab’s ECG monitor
 
 Pulse detection was evaluated against an ECG monitor in the lab using synchronized recordings. The comparison below shows the reference ECG R-peaks alongside the app’s detected PPG peaks.
@@ -45,7 +49,7 @@ flowchart LR
 
 Reliable recordings are essential for meaningful practice: distorted signals can turn measurement error into misleading participant feedback. A custom **two-branch PyTorch neural network** evaluates ten-second windows using both waveform shape and peak timing, helping identify recordings that need to be repeated.
 
-The model was developed with **2,592 labeled PPG segments from BUT PPG and BIDMC**, including 1,835 training segments. The bundled checkpoint achieved **95.3% accuracy and 0.971 F1** for the good-quality class on 379 test segments. These are internal segment-level results; recordings can contribute different segments to training and testing, so they do not establish performance on unseen participants. [Evaluation details →](docs/validation/README.md#signal-quality-model)
+The model was developed with **2,592 labeled PPG segments from BUT PPG and BIDMC**, including 1,835 training segments. The bundled checkpoint achieved **95.3% accuracy and 0.971 F1** for the good-quality class on 379 test segments. The signal-quality model achieved 95.3% accuracy and 0.971 F1 on a held-out segment-level test set (379 segments). Evaluation was performed at the segment level; participant-level generalization was not separately evaluated. [Evaluation details →](docs/validation/README.md#signal-quality-model)
 
 ```mermaid
 flowchart LR
