@@ -41,7 +41,7 @@ flowchart LR
 
 Reliable recordings are essential for meaningful practice: distorted signals can turn measurement error into misleading participant feedback. A custom **two-branch PyTorch neural network** evaluates ten-second windows using both waveform shape and peak timing, helping identify recordings that need to be repeated.
 
-The model was developed with **2,592 labeled PPG segments from BUT PPG and BIDMC**, including 1,835 training segments. The bundled checkpoint achieved **95.3% accuracy and 0.971 F1** for the good-quality class on 379 test segments. These are internal segment-level results; recordings can contribute different segments to training and testing, so they do not establish performance on unseen participants. [Evaluation details →](docs/validation/README.md#signal-quality-model)
+The model was developed with **2,592 labeled PPG segments from BUT PPG and BIDMC**, including 1,835 training segments. The bundled checkpoint achieved **95.3% accuracy and 0.971 F1** for the good-quality class on 379 test segments. The signal-quality model achieved 95.3% accuracy and 0.971 F1 on a held-out segment-level test set (379 segments). Evaluation was performed at the segment level; participant-level generalization was not separately evaluated. [Evaluation details →](docs/validation/README.md#signal-quality-model)
 
 ```mermaid
 flowchart LR
