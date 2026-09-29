@@ -2,6 +2,7 @@
   <img src="docs/images/logo_monitor_mark.png" alt="Heart Monitor logo" width="100" />
   <h1>Heart Monitor</h1>
   <h2>Selected Code Samples and preview</h2>
+  <img src="docs/images/monitor_app_preview_img.jpeg" alt="Heart Monitor preview showing session score and pulse practice results" width="600" />
   <p><a href="https://youtube.com/shorts/yCZicQNDnvs">Watch a Demo</a></p>
   <p><strong>A mobile research platform for interoceptive training</strong></p>
   <p>Python · Flask · OpenCV · PyTorch · Azure SQL · Flutter</p>
