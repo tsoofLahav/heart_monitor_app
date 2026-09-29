@@ -1,7 +1,7 @@
 <div align="center">
   <img src="docs/images/logo_monitor_mark.png" alt="Heart Monitor logo" width="100" />
-  <h1>Heart Monitor
-    (Selected Code Samples and preview)</h1>
+  <h1>Heart Monitor</h1>
+  <h2>Selected Code Samples and preview</h2>
   <p><strong>A mobile research platform for interoceptive training</strong></p>
   <p>Python · Flask · OpenCV · PyTorch · Azure SQL · Flutter</p>
 </div>
