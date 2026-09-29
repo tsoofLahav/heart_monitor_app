@@ -1,0 +1,95 @@
+<div align="center">
+  <img src="docs/images/logo_monitor_mark.png" alt="Heart Monitor logo" width="100" />
+  <h1>Heart Monitor</h1>
+  <p><strong>A mobile research platform for interoceptive training</strong></p>
+  <p>Python · Flask · OpenCV · PyTorch · Azure SQL · Flutter</p>
+</div>
+
+> **Portfolio showcase — partial implementation**  
+> Selected engineering samples covering signal processing, machine learning, recording timing, and Flutter visualization—approximately **4.3% of the application source and tests**. The full source remains private to protect the product’s commercial value. This repository is not a complete runnable application.
+
+## Built for research
+
+Developed in cooperation with **Brain Lab at Reichman University**, Heart Monitor supports an experiment investigating whether training awareness of internal bodily signals—**interoception**—can contribute to chronic-pain treatment.
+
+The platform brings camera-based pulse measurement, machine-learning quality assessment, and guided heartbeat-perception exercises into a structured participant experience, with experimental and control training flows.
+
+<p align="center">
+  <a href="docs/images/method-overview.png"><img src="docs/images/method-overview.png" alt="Heart Monitor method overview: camera-based PPG, signal processing, ML quality validation, heartbeat feedback, and participant study flow" width="900" /></a>
+</p>
+
+## Backend · From fingertip video to pulse measurement
+
+The backend converts subtle changes in fingertip colour into a photoplethysmography (**PPG**) signal. OpenCV extracts the signal from camera frames; filtering and peak detection recover the pulse rhythm. The Flask API returns the waveform, detected beats, and recording quality, while Azure SQL stores study records.
+
+### PPG vs ECG validation
+
+In a pilot study of 15 participants × 3 recordings (45 recordings), smartphone PPG showed strong beat-to-beat agreement with synchronized ECG: 1.53 BPM MAE, 2.03 BPM RMSE, 96.35% of matched intervals within ±5 BPM, and r = 0.79, with >91% usable-interval coverage.
+
+### Comparison against the lab’s ECG monitor
+
+Pulse detection was evaluated against an ECG monitor in the lab using synchronized recordings. The comparison below shows the reference ECG R-peaks alongside the app’s detected PPG peaks.
+
+![Laboratory comparison of ECG R-peaks and camera-derived PPG peaks](docs/images/compare_app_to_monitor.png)
+
+*Example lab recording. The traces are normalized and vertically separated for visibility.*
+
+The validation script aligns recording timestamps, derives heart rate from consecutive peaks (**BPM = 60 / interval in seconds**), and matches the interval sequences in order. It reports error, agreement, and coverage, including penalties for unmatched intervals.
+
+```mermaid
+flowchart LR
+    E[Lab ECG R-peaks] --> R[RR intervals]
+    P[App PPG peaks] --> I[Pulse intervals]
+    R --> H[Convert intervals to BPM]
+    I --> H
+    H --> M[Ordered matching and edge-offset sweep]
+    M --> A[Error, agreement and coverage]
+```
+
+[Comparison method and calculations →](docs/validation/README.md)
+
+### Machine learning · Quality before feedback
+
+Reliable recordings are essential for meaningful practice: distorted signals can turn measurement error into misleading participant feedback. A custom **two-branch PyTorch neural network** evaluates ten-second windows using both waveform shape and peak timing, helping identify recordings that need to be repeated.
+
+The model was developed with **2,592 labeled PPG segments from BUT PPG and BIDMC**, including 1,835 training segments. The signal-quality model achieved 95.3% accuracy and 0.971 F1 on a held-out segment-level test set (379 segments). Evaluation was performed at the segment level; participant-level generalization was not separately evaluated. [Evaluation details →](docs/validation/README.md#signal-quality-model)
+
+```mermaid
+flowchart LR
+    W[PPG waveform · 300 samples] --> C[1D CNN · waveform features]
+    P[Peak mask] --> PC[1D CNN · peak features]
+    R[5 interval statistics] --> FC[Feature network]
+    PC --> PF[Peak-branch fusion]
+    FC --> PF
+    C --> F[Combine both branches]
+    PF --> F
+    F --> Q[Classifier · GOOD / BAD]
+```
+
+<p align="center">
+  <img src="docs/images/good_signal.jpeg" alt="Good signal: successful pulse-recording practice" width="230" />
+  &nbsp;&nbsp;
+  <img src="docs/images/bad_signal.jpeg" alt="Bad signal: quality feedback prompts another recording" width="230" />
+</p>
+
+## Frontend · A guided participant experience
+
+The **Flutter app for iOS and Android** guides participants from camera preparation through assessment, heartbeat counting, and rhythm matching. English and Hebrew interfaces, right-to-left layouts, voice guidance, and timed counting cues support use while the phone is face down.
+
+A visual progress trail structures the study into an initial assessment, eight training sessions, and a final assessment. Clear feedback and optional reminders support continued participation. The experience was reviewed through **QA by Human–Computer Interaction master’s students**, informing refinements to instructions, navigation, and visual consistency.
+
+<p align="center">
+  <img src="docs/images/front1.jpeg" alt="Study progress trail" width="180" />
+  <img src="docs/images/front2.jpeg" alt="Hebrew camera preparation tutorial" width="180" />
+  <img src="docs/images/front3.jpeg" alt="Visual session feedback" width="180" />
+  <img src="docs/images/front4.jpeg" alt="Interactive heartbeat rhythm matching" width="180" />
+</p>
+
+## Selected code
+
+- [Signal processing](code_samples/signal_processing/) — filtering, normalization, and peak detection.
+- [Machine learning](code_samples/machine_learning/) — two-branch neural network architecture.
+- [Recording timing](code_samples/recording_timing/) — client/server timing logic and tests.
+- [Flutter visualization](code_samples/flutter_visualization/) — signal rendering and its test.
+
+The selection contains 653 of 15,056 nonblank lines of Python/Dart application source and tests (4.3%), excluding generated localization code, measured on September 29, 2026. Samples retain their original imports; surrounding application dependencies are intentionally omitted. Model weights, application wiring, database integration, and deployment resources are not included.
