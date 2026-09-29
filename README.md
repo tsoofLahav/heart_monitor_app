@@ -1,11 +1,11 @@
 <div align="center">
   <img src="docs/images/logo_monitor_mark.png" alt="Heart Monitor logo" width="100" />
-  <h1>Heart Monitor</h1>
+  <h1>Heart Monitor(Selected Code Samples)</h1>
   <p><strong>A mobile research platform for interoceptive training</strong></p>
   <p>Python · Flask · OpenCV · PyTorch · Azure SQL · Flutter</p>
 </div>
 
-> **Portfolio showcase — partial implementation**  
+> **Portfolio showcase — Selected Code Samples**  
 > Selected engineering samples covering signal processing, machine learning, recording timing, and Flutter visualization—approximately **4.3% of the application source and tests**. The full source remains private to protect the product’s commercial value. This repository is not a complete runnable application.
 
 ## Built for research
